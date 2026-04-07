@@ -84,8 +84,7 @@ func (k *Knip) Run(ctx context.Context, paths []string, opts adapter.RunOptions)
 			if errors.As(runErr, &exitErr) {
 				// Exit 1 = issues found (success for us). Exit 2 = real error.
 				if exitErr.ExitCode() != 1 && exitErr.ExitCode() != 0 {
-					return nil, fmt.Errorf("knip failed in %s (exit %d): %s",
-						root, exitErr.ExitCode(), strings.TrimSpace(string(exitErr.Stderr)))
+					return nil, knipExecError(root, exitErr.ExitCode(), exitErr.Stderr)
 				}
 			} else {
 				return nil, fmt.Errorf("knip failed in %s: %w", root, runErr)
@@ -98,6 +97,24 @@ func (k *Knip) Run(ctx context.Context, paths []string, opts adapter.RunOptions)
 		allFindings = append(allFindings, findings...)
 	}
 	return allFindings, nil
+}
+
+// knipExecError translates a knip non-zero exit into an actionable
+// message. The most common real-world failure is "Cannot find module"
+// when the project's node_modules aren't installed — knip dynamically
+// loads config files (vite.config.ts, etc.) and they import their own
+// deps. The fix is always the same: install the project's deps.
+func knipExecError(root string, exitCode int, stderr []byte) error {
+	stderrStr := strings.TrimSpace(string(stderr))
+	if strings.Contains(stderrStr, "Cannot find module") {
+		return fmt.Errorf(
+			"knip failed in %s (exit %d): the project's node_modules are missing or incomplete. "+
+				"Run `npm install` (or `npm ci` / `pnpm install` / `yarn install`) in %s and re-scan. "+
+				"Original error: %s",
+			root, exitCode, root, stderrStr,
+		)
+	}
+	return fmt.Errorf("knip failed in %s (exit %d): %s", root, exitCode, stderrStr)
 }
 
 // resolveKnipCommand picks the best available way to invoke knip:

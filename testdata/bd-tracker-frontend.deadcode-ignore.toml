@@ -1,0 +1,19 @@
+# Ignore file targeting bd-tracker/frontend's shadcn/ui false-positive
+# pattern. We deliberately do NOT ignore src.bak/ — those are real dead
+# code that should be deleted.
+
+[[ignore]]
+file = "src/components/ui/**"
+kinds = ["unused_file", "unused_export"]
+languages = ["typescript", "javascript"]
+reason = "shadcn/ui primitives — kept on hand for future use even when not currently imported"
+
+[[ignore]]
+symbol = "@radix-ui/react-*"
+kinds = ["unused_dependency"]
+reason = "Transitive peer deps of shadcn/ui primitives — flagged because the primitives are 'unused', but they're available on demand"
+
+[[ignore]]
+symbol = "@hookform/resolvers"
+kinds = ["unused_dependency"]
+reason = "Used dynamically by react-hook-form when validation schemas are wired up"

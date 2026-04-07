@@ -16,23 +16,42 @@ import (
 // JSON writes the report as the canonical schema document. When
 // showIgnored is true, the suppressed findings appear in the `ignored`
 // array; otherwise only the count appears in `summary.findings_ignored`.
+//
+// Empty arrays are emitted as `[]`, never `null`, so downstream jq
+// consumers can iterate without nil checks.
 func JSON(w io.Writer, r *runner.Result, showIgnored bool) error {
+	findings := r.Findings
+	if findings == nil {
+		findings = []finding.Finding{}
+	}
+	languages := r.LanguagesPresent
+	if languages == nil {
+		languages = []string{}
+	}
+	tools := dedupSorted(r.ToolsRun)
+	if tools == nil {
+		tools = []string{}
+	}
 	doc := finding.Report{
 		SchemaVersion: finding.SchemaVersion,
 		Summary: finding.Summary{
-			Languages:        r.LanguagesPresent,
+			Languages:        languages,
 			FilesScanned:     r.FilesScanned,
-			FindingsTotal:    len(r.Findings),
+			FindingsTotal:    len(findings),
 			FindingsIgnored:  len(r.Ignored),
-			ToolsRun:         dedupSorted(r.ToolsRun),
+			ToolsRun:         tools,
 			ToolsUnavailable: r.ToolsUnavailable,
 			IgnoreFile:       r.IgnoreFile,
 			DurationMs:       r.DurationMs,
 		},
-		Findings: r.Findings,
+		Findings: findings,
 	}
 	if showIgnored {
-		doc.Ignored = r.Ignored
+		ignored := r.Ignored
+		if ignored == nil {
+			ignored = []finding.IgnoredFinding{}
+		}
+		doc.Ignored = ignored
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
