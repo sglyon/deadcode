@@ -1,0 +1,205 @@
+// Package python contains adapters for Python analyzers.
+package python
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/sglyon/deadcode/internal/adapter"
+	"github.com/sglyon/deadcode/internal/finding"
+)
+
+// Vulture wraps the `vulture` Python static analyzer.
+//
+// Vulture's output format is:
+//
+//	<file>:<line>: unused <kind> '<symbol>' (<n>% confidence)
+//	<file>:<line>: unreachable code after '<token>' (<n>% confidence)
+//
+// Vulture exits with code 3 when it finds unused code — that is "success"
+// for our purposes, not an error.
+type Vulture struct{}
+
+func New() *Vulture { return &Vulture{} }
+
+func (v *Vulture) Name() string        { return "vulture" }
+func (v *Vulture) Languages() []string { return []string{"python"} }
+
+func (v *Vulture) Check(ctx context.Context) error {
+	if _, err := exec.LookPath("vulture"); err != nil {
+		return fmt.Errorf("vulture not found in PATH (install with: pip install vulture)")
+	}
+	cmd := exec.CommandContext(ctx, "vulture", "--version")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("vulture is installed but `vulture --version` failed: %w", err)
+	}
+	return nil
+}
+
+func (v *Vulture) Run(ctx context.Context, paths []string, opts adapter.RunOptions) ([]finding.Finding, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	var args []string
+	if flag := BuildIgnoreDecoratorsFlag(opts.IgnoreDecorators, !opts.NoDefaultDecorators); flag != "" {
+		args = append(args, "--ignore-decorators", flag)
+	}
+	args = append(args, paths...)
+	cmd := exec.CommandContext(ctx, "vulture", args...)
+	out, err := cmd.Output()
+	if err != nil {
+		// Vulture exits 3 when findings exist. That is the happy path for us.
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			if exitErr.ExitCode() != 3 {
+				return nil, fmt.Errorf("vulture failed (exit %d): %s", exitErr.ExitCode(), strings.TrimSpace(string(exitErr.Stderr)))
+			}
+		} else {
+			return nil, fmt.Errorf("vulture failed: %w", err)
+		}
+	}
+	return parseVultureOutput(out, opts), nil
+}
+
+// vultureLine matches both unused-symbol and unreachable-code lines.
+//
+// Captured groups:
+//  1. file
+//  2. line number
+//  3. message body
+//  4. confidence (digits)
+var vultureLine = regexp.MustCompile(`^(.+?):(\d+):\s+(.+?)\s+\((\d+)% confidence\)\s*$`)
+
+// unusedSymbol matches the body of an "unused X 'name'" message.
+//
+// Captured groups:
+//  1. raw kind word (function/method/class/variable/import/attribute/property)
+//  2. symbol name
+var unusedSymbol = regexp.MustCompile(`^unused\s+(\w+)\s+'([^']+)'$`)
+
+func parseVultureOutput(out []byte, opts adapter.RunOptions) []finding.Finding {
+	var findings []finding.Finding
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		m := vultureLine.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		file, lineStr, body, confStr := m[1], m[2], m[3], m[4]
+
+		lineNum, err := strconv.Atoi(lineStr)
+		if err != nil {
+			continue
+		}
+		confInt, err := strconv.Atoi(confStr)
+		if err != nil {
+			continue
+		}
+		confidence := float64(confInt) / 100.0
+
+		var kind finding.Kind
+		var symbol string
+		var message string
+
+		if sm := unusedSymbol.FindStringSubmatch(body); sm != nil {
+			kind = mapVultureKind(sm[1])
+			symbol = sm[2]
+			message = fmt.Sprintf("%s '%s' appears unused", titleCase(sm[1]), symbol)
+		} else if strings.HasPrefix(body, "unreachable code") {
+			kind = finding.KindUnreachable
+			message = "Unreachable code"
+		} else {
+			// Unknown vulture message shape — skip rather than misclassify.
+			continue
+		}
+
+		absFile, err := filepath.Abs(file)
+		if err != nil {
+			absFile = file
+		}
+
+		if opts.ExcludeTests && looksLikeTestFile(absFile) {
+			continue
+		}
+
+		findings = append(findings, finding.Finding{
+			ID:         buildID("py", file, lineNum, kind, symbol),
+			File:       absFile,
+			Line:       lineNum,
+			Symbol:     symbol,
+			Kind:       kind,
+			Language:   "python",
+			Tool:       "vulture",
+			Confidence: confidence,
+			Message:    message,
+			Evidence: map[string]string{
+				"tool_raw":        line,
+				"tool_confidence": confStr + "%",
+			},
+			FixHint: finding.FixDelete,
+		})
+	}
+	return findings
+}
+
+func mapVultureKind(raw string) finding.Kind {
+	switch raw {
+	case "function":
+		return finding.KindUnusedFunction
+	case "method":
+		return finding.KindUnusedMethod
+	case "class":
+		return finding.KindUnusedClass
+	case "variable":
+		return finding.KindUnusedVariable
+	case "import":
+		return finding.KindUnusedImport
+	case "attribute", "property":
+		return finding.KindUnusedField
+	default:
+		// Unknown — surface it as a generic unused variable so it isn't lost,
+		// but this should be rare and worth investigating.
+		return finding.KindUnusedVariable
+	}
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func buildID(langPrefix, file string, line int, kind finding.Kind, symbol string) string {
+	rel := file
+	if abs, err := filepath.Abs(file); err == nil {
+		if cwd, err := filepath.Abs("."); err == nil {
+			if r, err := filepath.Rel(cwd, abs); err == nil {
+				rel = r
+			}
+		}
+	}
+	return fmt.Sprintf("%s:%s:%d:%s:%s", langPrefix, rel, line, kind, symbol)
+}
+
+func looksLikeTestFile(path string) bool {
+	base := filepath.Base(path)
+	dir := filepath.ToSlash(filepath.Dir(path))
+	if strings.HasPrefix(base, "test_") || strings.HasSuffix(base, "_test.py") {
+		return true
+	}
+	for _, seg := range strings.Split(dir, "/") {
+		if seg == "tests" || seg == "test" {
+			return true
+		}
+	}
+	return false
+}
