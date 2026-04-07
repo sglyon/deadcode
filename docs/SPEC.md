@@ -182,6 +182,7 @@ This is the only extension point. Adding a language is ~50 lines plus a parser.
 | Python       | `vulture` (+ `ruff F401/F841`)    | **shipped v0.1** | Native % confidence; widely installed |
 | TypeScript   | `knip`                            | **shipped v0.3** | Modern, project-aware, JSON output |
 | JavaScript   | `knip`                            | **shipped v0.3** | Same |
+| Elixir       | `mix compile` (set-theoretic type system) | **shipped v0.4** | Built-in; no install; improves every Elixir release |
 | Go           | `staticcheck -checks=U1000`       | Standard, accurate, JSON output |
 | Rust         | `cargo +nightly udeps` (deps) + `cargo check` warnings | Best available |
 | Java         | `pmd` UnusedPrivateMethod ruleset | No IDE dependency |
@@ -301,7 +302,37 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 - Knip adapter handles project-root discovery (nearest `package.json`)
   and falls back to `npx --yes knip` when knip isn't installed globally
 
-### v0.3.x — Coverage
+### v0.4 — Elixir (current)
+- Elixir adapter built on `mix compile` only (mix xref unreachable was
+  deprecated in Elixir 1.19 — the check moved to the compiler)
+- Parser handles box-drawn multi-line warning blocks, multi-location
+  warnings (one warning with N `└─` lines → N findings), and the
+  `==> app_name` section delimiter so dep-level warnings don't leak
+- Tested on Elixir 1.19 / OTP 28; parser should work on any Elixir
+  >= 1.18 that emits the set-theoretic type system's diagnostic
+  format; pinned with regression fixtures captured from both a local
+  fixture and the real-world arilearn-phx Phoenix codebase
+- Project-root discovery: nearest `mix.exs`
+- Umbrella projects detected (`apps_path:`) but not fully supported
+  in v0.4 — they fall back to keeping all sections (noisier). Full
+  support is a v0.4.x task
+- Phoenix/OTP default ignore list: controller actions, GenServer
+  callbacks, LiveView callbacks, Channel callbacks, Plug `call/2`,
+  Ecto `changeset/*`. Dormant in v0.4 since built-in tools don't
+  catch unused public functions, but ready for v0.4.x when
+  `mix_unused` integration lands
+- Friendly error for missing `_build/` (mirrors knip's
+  `node_modules` check)
+
+Known v0.4 limitation: built-in tools do NOT catch unused public
+functions across modules. Users who need this should add the optional
+`mix_unused` dev dependency to their project; its warnings flow
+through `mix compile` and our parser should pick them up
+automatically. Dialyzer integration is out of scope (declining
+relevance as Elixir's native type system matures).
+
+### v0.4.x — Coverage
+- Full umbrella app support (multi-child section filtering)
 - Add Go (`staticcheck`) adapter
 - Confidence normalization documented per-adapter
 - Markdown reporter

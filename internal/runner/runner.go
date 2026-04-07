@@ -226,6 +226,8 @@ func scanPaths(roots []string) ([]string, map[string]int, error) {
 		"__pycache__":  true,
 		"vendor":       true,
 		".tox":         true,
+		"_build":       true,
+		".elixir_ls":   true,
 	}
 
 	for _, root := range roots {
@@ -266,6 +268,8 @@ func languageFor(filename string) string {
 		return "typescript"
 	case ".js", ".jsx", ".mjs", ".cjs":
 		return "javascript"
+	case ".ex", ".exs":
+		return "elixir"
 	}
 	return ""
 }

@@ -1,0 +1,35 @@
+Compiling 3 files (.ex)
+    warning: function private_dead/0 is unused
+    │
+ 16 │   defp private_dead do
+    │        ~
+    │
+    └─ lib/orphan.ex:16:8: Sample.Orphan (module)
+
+    warning: the following clause will never match:
+
+        :bad
+
+    because it attempts to match on the result of:
+
+        classify(:ok)
+
+    which has type:
+
+        dynamic(:good)
+
+    typing violation found at:
+    │
+ 16 │       :bad -> IO.puts("bad")
+    │       ~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/sample.ex:16: Sample.main/0
+
+    warning: this clause of defp classify/1 is never used
+    │
+ 23 │   defp classify(:error), do: :bad
+    │        ~
+    │
+    └─ lib/sample.ex:23:8: Sample.classify/1
+
+Generated sample app

@@ -1,0 +1,384 @@
+==> file_system
+Compiling 7 files (.ex)
+Generated file_system app
+==> stream_data
+Compiling 3 files (.ex)
+Generated stream_data app
+==> ymlr
+Compiling 3 files (.ex)
+Generated ymlr app
+==> crypto_rand
+Compiling 1 file (.ex)
+     warning: List.zip/1 is deprecated. Use Enum.zip/1 instead
+     │
+ 138 │     |> List.zip()
+     │             ~
+     │
+     └─ lib/crypto_rand.ex:138:13: CryptoRand.shuffle_list/3
+
+Generated crypto_rand app
+==> mime
+Compiling 1 file (.ex)
+Generated mime app
+==> nimble_options
+Compiling 3 files (.ex)
+Generated nimble_options app
+==> circular_buffer
+Compiling 1 file (.ex)
+Generated circular_buffer app
+==> comeonin
+Compiling 3 files (.ex)
+Generated comeonin app
+==> plug_crypto
+Compiling 5 files (.ex)
+Generated plug_crypto app
+==> hpax
+Compiling 4 files (.ex)
+Generated hpax app
+==> arilearn
+===> Analyzing applications...
+===> Compiling yamerl
+==> jose
+Compiling 113 files (.erl)
+Compiling 8 files (.ex)
+Generated jose app
+==> arilearn
+===> Analyzing applications...
+===> Compiling shards
+==> ets
+Compiling 7 files (.ex)
+Generated ets app
+==> iterex
+Compiling 48 files (.ex)
+Generated iterex app
+==> owl
+Compiling 19 files (.ex)
+Generated owl app
+==> elixir_make
+Compiling 8 files (.ex)
+Generated elixir_make app
+==> castore
+Compiling 1 file (.ex)
+Generated castore app
+==> mint
+Compiling 1 file (.erl)
+Compiling 20 files (.ex)
+Generated mint app
+==> earmark
+Compiling 3 files (.erl)
+Compiling 61 files (.ex)
+Generated earmark app
+==> arilearn
+===> Analyzing applications...
+===> Compiling mochiweb
+==> conv_case
+Compiling 1 file (.ex)
+Generated conv_case app
+==> picosat_elixir
+make: Nothing to be done for `all'.
+Compiling 1 file (.erl)
+Compiling 2 files (.ex)
+Generated picosat_elixir app
+==> sourceror
+Compiling 12 files (.ex)
+Generated sourceror app
+==> bcrypt_elixir
+mkdir -p "/Users/sglyon/src/arete/arilearn-phx/_build/dev/lib/bcrypt_elixir/priv"
+cc -g -O3 -Wall -Wno-format-truncation -I"/opt/homebrew/Cellar/erlang/28.4.1/lib/erlang/erts-16.3/include" -Ic_src -fPIC -shared -dynamiclib -undefined dynamic_lookup c_src/bcrypt_nif.c c_src/blowfish.c -o "/Users/sglyon/src/arete/arilearn-phx/_build/dev/lib/bcrypt_elixir/priv/bcrypt_nif.so"
+Compiling 3 files (.ex)
+Generated bcrypt_elixir app
+==> text_diff
+Compiling 1 file (.ex)
+Generated text_diff app
+==> decimal
+Compiling 4 files (.ex)
+Generated decimal app
+==> jason
+Compiling 10 files (.ex)
+Generated jason app
+==> esbuild
+Compiling 4 files (.ex)
+Generated esbuild app
+==> xema
+Compiling 19 files (.ex)
+Generated xema app
+==> yaml_elixir
+Compiling 6 files (.ex)
+Generated yaml_elixir app
+==> spitfire
+Compiling 2 files (.erl)
+Compiling 5 files (.ex)
+Generated spitfire app
+==> ex_json_schema
+Compiling 40 files (.ex)
+Generated ex_json_schema app
+==> libgraph
+Compiling 15 files (.ex)
+Generated libgraph app
+==> arilearn
+===> Analyzing applications...
+===> Compiling unicode_util_compat
+===> Analyzing applications...
+===> Compiling idna
+===> Analyzing applications...
+===> Compiling telemetry
+==> telemetry_metrics
+Compiling 7 files (.ex)
+Generated telemetry_metrics app
+==> arilearn
+===> Analyzing applications...
+===> Compiling telemetry_poller
+==> nebulex
+Compiling 45 files (.ex)
+Generated nebulex app
+==> thousand_island
+Compiling 18 files (.ex)
+Generated thousand_island app
+==> db_connection
+Compiling 18 files (.ex)
+Generated db_connection app
+==> ecto
+Compiling 56 files (.ex)
+Generated ecto app
+==> phoenix_html
+Compiling 6 files (.ex)
+Generated phoenix_html app
+==> phoenix_template
+Compiling 4 files (.ex)
+Generated phoenix_template app
+==> expo
+Compiling 2 files (.erl)
+Compiling 22 files (.ex)
+Generated expo app
+==> gettext
+Compiling 18 files (.ex)
+Generated gettext app
+==> phoenix_pubsub
+Compiling 12 files (.ex)
+Generated phoenix_pubsub app
+==> html_sanitize_ex
+Compiling 11 files (.ex)
+Generated html_sanitize_ex app
+==> json_xema
+Compiling 4 files (.ex)
+Generated json_xema app
+==> dns_cluster
+Compiling 1 file (.ex)
+Generated dns_cluster app
+==> phoenix_view
+Compiling 1 file (.ex)
+Generated phoenix_view app
+==> splode
+Compiling 5 files (.ex)
+Generated splode app
+==> glob_ex
+Compiling 4 files (.ex)
+Generated glob_ex app
+==> rewrite
+Compiling 13 files (.ex)
+Generated rewrite app
+==> slugify
+Compiling 1 file (.ex)
+Generated slugify app
+==> plug
+Compiling 1 file (.erl)
+Compiling 42 files (.ex)
+Generated plug app
+==> open_api_spex
+Compiling 80 files (.ex)
+Generated open_api_spex app
+==> phoenix_html_helpers
+Compiling 6 files (.ex)
+Generated phoenix_html_helpers app
+==> postgrex
+Compiling 69 files (.ex)
+Generated postgrex app
+==> phoenix_ecto
+Compiling 7 files (.ex)
+Generated phoenix_ecto app
+==> ecto_sql
+Compiling 25 files (.ex)
+Generated ecto_sql app
+==> dotenvy
+Compiling 3 files (.ex)
+Generated dotenvy app
+==> secure_random
+Compiling 1 file (.ex)
+    warning: use Bitwise is deprecated. import Bitwise instead
+    │
+  2 │   use Bitwise
+    │   ~~~~~~~~~~~
+    │
+    └─ lib/secure_random.ex:2: SecureRandom (module)
+
+Generated secure_random app
+==> joken
+Compiling 8 files (.ex)
+Generated joken app
+==> crux
+Compiling 19 files (.ex)
+Generated crux app
+==> nimble_pool
+Compiling 2 files (.ex)
+Generated nimble_pool app
+==> finch
+Compiling 14 files (.ex)
+Generated finch app
+==> req
+Compiling 19 files (.ex)
+Generated req app
+==> langchain
+Compiling 58 files (.ex)
+Generated langchain app
+==> igniter
+Compiling 60 files (.ex)
+Generated igniter app
+==> usage_rules
+Compiling 5 files (.ex)
+Generated usage_rules app
+==> oban
+Compiling 64 files (.ex)
+Generated oban app
+==> oban_met
+Compiling 11 files (.ex)
+Generated oban_met app
+==> spark
+Compiling 40 files (.ex)
+Generated spark app
+==> reactor
+Compiling 113 files (.ex)
+Generated reactor app
+==> ash
+Compiling 549 files (.ex)
+Generated ash app
+==> ash_oban
+Compiling 19 files (.ex)
+Generated ash_oban app
+==> ash_sql
+Compiling 14 files (.ex)
+Generated ash_sql app
+==> ash_postgres
+Compiling 58 files (.ex)
+Generated ash_postgres app
+==> assent
+Compiling 40 files (.ex)
+Generated assent app
+==> ash_authentication
+Compiling 170 files (.ex)
+Generated ash_authentication app
+==> tailwind
+Compiling 3 files (.ex)
+Generated tailwind app
+==> websock
+Compiling 1 file (.ex)
+Generated websock app
+==> bandit
+Compiling 54 files (.ex)
+Generated bandit app
+==> swoosh
+Compiling 56 files (.ex)
+Generated swoosh app
+==> websock_adapter
+Compiling 4 files (.ex)
+Generated websock_adapter app
+==> phoenix
+Compiling 74 files (.ex)
+Generated phoenix app
+==> phoenix_live_reload
+Compiling 5 files (.ex)
+Generated phoenix_live_reload app
+==> tidewave
+Compiling 15 files (.ex)
+Generated tidewave app
+==> phoenix_live_view
+Compiling 49 files (.ex)
+Generated phoenix_live_view app
+==> ash_phoenix
+Compiling 35 files (.ex)
+Generated ash_phoenix app
+==> ash_authentication_phoenix
+Compiling 46 files (.ex)
+Generated ash_authentication_phoenix app
+==> oban_web
+Compiling 42 files (.ex)
+    warning: function svg_mini/1 is unused
+    │
+ 16 │   defp svg_mini(assigns) do
+    │   ~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/oban/web/components/icons.ex:16: Oban.Web.Components.Icons (module)
+
+Generated oban_web app
+==> phoenix_live_dashboard
+Compiling 36 files (.ex)
+Generated phoenix_live_dashboard app
+==> cinder
+Compiling 50 files (.ex)
+Generated cinder app
+==> ash_admin
+Compiling 40 files (.ex)
+Generated ash_admin app
+==> ash_json_api
+Compiling 74 files (.ex)
+     warning: a struct for Plug.Conn is expected on struct update:
+
+         %Plug.Conn{conn | private: Map.put(conn.private, AshJsonApi.Plug.Parser, content)}
+
+     but got type:
+
+         dynamic()
+
+     where "conn" was given the type:
+
+         # type: dynamic()
+         # from: lib/ash_json_api/plug/parser.ex:143:10
+         {:ok, data, acc, conn}
+
+     when defining the variable "conn", you must also pattern match on "%Plug.Conn{}".
+
+     hint: given pattern matching is enough to catch typing errors, you may optionally convert the struct update into a map update. For example, instead of:
+
+         user = some_function()
+         %User{user | name: "John Doe"}
+
+     it is enough to write:
+
+         %User{} = user = some_function()
+         %{user | name: "John Doe"}
+
+     typing violation found at:
+     │
+ 152 │              %Plug.Conn{conn | private: Map.put(conn.private, __MODULE__, content)},
+     │              ~
+     │
+     └─ lib/ash_json_api/plug/parser.ex:152:14: AshJsonApi.Plug.Parser.reduce_part/4
+
+Generated ash_json_api app
+==> ash_ai
+Compiling 36 files (.ex)
+Generated ash_ai app
+==> puid
+Compiling 5 files (.ex)
+     warning: use Bitwise is deprecated. import Bitwise instead
+     │
+ 133 │   use Bitwise, only: bsl
+     │   ~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/puid/puid.ex:133: Puid (module)
+
+Generated puid app
+==> boruta
+Compiling 98 files (.ex)
+     warning: List.zip/1 is deprecated. Use Enum.zip/1 instead
+     │
+ 187 │     List.zip([template_paths(@module_paths), @module_paths])
+     │          ~
+     │
+     └─ lib/mix/tasks/boruta.gen.controllers.ex:187:10: Mix.Tasks.Boruta.Gen.Controllers.copy_modules/2
+     └─ lib/mix/tasks/boruta.gen.controllers.ex:199:10: Mix.Tasks.Boruta.Gen.Controllers.copy_raw_files/2
+     └─ lib/mix/tasks/boruta.gen.controllers.ex:211:10: Mix.Tasks.Boruta.Gen.Controllers.copy_test_files/2
+
+Generated boruta app
+==> arilearn
+Compiling 225 files (.ex)
+Generated arilearn app
