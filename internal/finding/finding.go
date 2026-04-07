@@ -57,14 +57,25 @@ type Summary struct {
 	Languages        []string `json:"languages"`
 	FilesScanned     int      `json:"files_scanned"`
 	FindingsTotal    int      `json:"findings_total"`
+	FindingsIgnored  int      `json:"findings_ignored,omitempty"`
 	ToolsRun         []string `json:"tools_run"`
 	ToolsUnavailable []string `json:"tools_unavailable,omitempty"`
+	IgnoreFile       string   `json:"ignore_file,omitempty"`
 	DurationMs       int64    `json:"duration_ms"`
+}
+
+// IgnoredFinding wraps a Finding with the reason it was suppressed.
+// Only present in the report when --show-ignored is set.
+type IgnoredFinding struct {
+	Finding
+	IgnoreReason string `json:"ignore_reason"`
+	MatchedRule  int    `json:"matched_rule"`
 }
 
 // Report is the full output document.
 type Report struct {
-	SchemaVersion string    `json:"schema_version"`
-	Summary       Summary   `json:"summary"`
-	Findings      []Finding `json:"findings"`
+	SchemaVersion string           `json:"schema_version"`
+	Summary       Summary          `json:"summary"`
+	Findings      []Finding        `json:"findings"`
+	Ignored       []IgnoredFinding `json:"ignored,omitempty"`
 }

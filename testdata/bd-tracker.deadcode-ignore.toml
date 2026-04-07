@@ -1,0 +1,38 @@
+# Example ignore file targeting the patterns we observed in bd-tracker.
+# Demonstrates each rule shape: glob-by-file+kind, symbol patterns, and
+# all-caps module constants exported dynamically.
+
+[[ignore]]
+file = "src/models/**.py"
+kinds = ["unused_field", "unused_variable"]
+reason = "Pydantic/SQLAlchemy schema field declarations — used by ORM/serializer introspection"
+
+[[ignore]]
+symbol = "*_at"
+languages = ["python"]
+kinds = ["unused_variable"]
+reason = "ORM timestamp columns (created_at, updated_at, etc.)"
+
+[[ignore]]
+symbol = "*_id"
+languages = ["python"]
+kinds = ["unused_variable"]
+reason = "ORM foreign key columns"
+
+[[ignore]]
+file = "src/models/domain.py"
+symbol = "DEAL_*"
+kinds = ["unused_variable"]
+reason = "Module-level enum constants exported via dynamic import"
+
+[[ignore]]
+file = "src/models/domain.py"
+symbol = "*_TYPES"
+kinds = ["unused_variable"]
+reason = "Module-level enum constants exported via dynamic import"
+
+[[ignore]]
+file = "src/models/domain.py"
+symbol = "SERVICE_LINES"
+kinds = ["unused_variable"]
+reason = "Module-level enum constant"

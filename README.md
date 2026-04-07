@@ -3,7 +3,8 @@
 Multi-language dead-code detection orchestrator. Detects languages, runs the
 right per-language analyzer, and emits a unified, agent-friendly report.
 
-**Status:** v0.1 — vertical slice. One adapter (Python via `vulture`).
+**Status:** v0.2 — vertical slice (Python via `vulture`) plus the unified
+`.deadcode-ignore.toml` filter that scales across every future adapter.
 See [`docs/SPEC.md`](docs/SPEC.md) for the full architecture and roadmap.
 
 ## Why
@@ -43,7 +44,43 @@ deadcode doctor
 
 # List built-in adapters
 deadcode adapters
+
+# Inspect / validate the discovered .deadcode-ignore.toml
+deadcode ignore list
+deadcode ignore validate
+
+# Show suppressed findings with their ignore reasons
+deadcode scan --show-ignored .
 ```
+
+## Suppressing findings: `.deadcode-ignore.toml`
+
+Drop a `.deadcode-ignore.toml` at the repo root. `deadcode` discovers it
+by walking up from the scan root, like `.gitignore`.
+
+```toml
+# Most precise: ignore by exact stable Finding ID
+[[ignore]]
+id = "py:src/foo.py:42:unused_function:legacy_handler"
+reason = "Called via reflection in worker dispatcher"
+
+# By file glob + kind — kills the ORM/schema field bucket
+[[ignore]]
+file = "src/models/**.py"
+kinds = ["unused_field", "unused_variable"]
+reason = "Pydantic/SQLAlchemy field declarations"
+
+# By symbol pattern across the repo
+[[ignore]]
+symbol = "*_at"
+languages = ["python"]
+kinds = ["unused_variable"]
+reason = "ORM timestamp columns"
+```
+
+All matchers on a rule AND together; rules are evaluated in order and
+the first match wins. `reason` is required. See
+[`docs/SPEC.md`](docs/SPEC.md#unified-ignore-v02) for full semantics.
 
 ## Supported languages (v0.1)
 

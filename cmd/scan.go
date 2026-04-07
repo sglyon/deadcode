@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/sglyon/deadcode/internal/finding"
+	"github.com/sglyon/deadcode/internal/ignore"
 	"github.com/sglyon/deadcode/internal/report"
 	"github.com/sglyon/deadcode/internal/runner"
 )
@@ -31,6 +32,10 @@ FLAGS:
                         ignore list (e.g. "@my.task,@app.event")
   --no-default-decorators
                         Disable the built-in framework decorator list
+  --ignore-file <path>  Use this .deadcode-ignore.toml (default: discover
+                        upward from the scan root)
+  --no-ignore-file      Disable ignore-file loading entirely
+  --show-ignored        Print suppressed findings (with reasons)
   --threshold <n>       Fail if total findings exceeds this
   --exit-code <n>       Exit code when threshold exceeded (default 0)
   -v, --verbose         Verbose console output (preserves tool raw lines)
@@ -46,6 +51,9 @@ FLAGS:
 		excludeTests        bool
 		ignoreDecoratorsStr string
 		noDefaultDecorators bool
+		ignoreFilePath      string
+		noIgnoreFile        bool
+		showIgnored         bool
 		threshold           int
 		exitCode            int
 		verbose             bool
@@ -59,6 +67,9 @@ FLAGS:
 	fs.BoolVar(&excludeTests, "exclude-tests", false, "")
 	fs.StringVar(&ignoreDecoratorsStr, "ignore-decorators", "", "")
 	fs.BoolVar(&noDefaultDecorators, "no-default-decorators", false, "")
+	fs.StringVar(&ignoreFilePath, "ignore-file", "", "")
+	fs.BoolVar(&noIgnoreFile, "no-ignore-file", false, "")
+	fs.BoolVar(&showIgnored, "show-ignored", false, "")
 	fs.IntVar(&threshold, "threshold", -1, "")
 	fs.IntVar(&exitCode, "exit-code", 0, "")
 	fs.BoolVar(&verbose, "verbose", false, "")
@@ -78,6 +89,21 @@ FLAGS:
 		kinds = append(kinds, finding.Kind(k))
 	}
 
+	rules, err := loadIgnoreRules(ignoreFilePath, noIgnoreFile, paths)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "deadcode:", err)
+		return 2
+	}
+	if rules != nil {
+		if errs := rules.Validate(); len(errs) > 0 {
+			fmt.Fprintln(os.Stderr, "deadcode: invalid ignore file:")
+			for _, e := range errs {
+				fmt.Fprintln(os.Stderr, "  -", e)
+			}
+			return 2
+		}
+	}
+
 	opts := runner.Options{
 		Paths:               paths,
 		Languages:           runner.SplitCSV(langStr),
@@ -86,6 +112,7 @@ FLAGS:
 		ExcludeTests:        excludeTests,
 		IgnoreDecorators:    runner.SplitCSV(ignoreDecoratorsStr),
 		NoDefaultDecorators: noDefaultDecorators,
+		IgnoreRules:         rules,
 		Verbose:             verbose,
 	}
 
@@ -110,12 +137,12 @@ FLAGS:
 	}
 
 	if jsonOut {
-		if err := report.JSON(out, result); err != nil {
+		if err := report.JSON(out, result, showIgnored); err != nil {
 			fmt.Fprintln(os.Stderr, "deadcode:", err)
 			return 2
 		}
 	} else {
-		if err := report.Console(out, result, verbose); err != nil {
+		if err := report.Console(out, result, verbose, showIgnored); err != nil {
 			fmt.Fprintln(os.Stderr, "deadcode:", err)
 			return 2
 		}
@@ -126,3 +153,30 @@ FLAGS:
 	}
 	return 0
 }
+
+// loadIgnoreRules resolves the ignore file based on the user's flags.
+//   - --no-ignore-file: never load anything (returns nil ruleset)
+//   - --ignore-file <path>: load that exact path; missing is an error
+//   - default: discover .deadcode-ignore.toml upward from the first
+//     scan path; missing is fine
+func loadIgnoreRules(explicitPath string, noFile bool, paths []string) (*ignore.Ruleset, error) {
+	if noFile {
+		return nil, nil
+	}
+	if explicitPath != "" {
+		return ignore.Load(explicitPath, true)
+	}
+	start := "."
+	if len(paths) > 0 {
+		start = paths[0]
+	}
+	rs, err := ignore.Discover(start)
+	if err != nil {
+		return nil, err
+	}
+	if rs.Empty() {
+		return nil, nil
+	}
+	return rs, nil
+}
+

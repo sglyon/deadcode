@@ -224,8 +224,10 @@ This layer is what turns "noisy raw tool output" into "actionable findings." Mos
 deadcode [path]                        # Default: scan, console output
 deadcode scan [path]                   # Explicit scan
 deadcode doctor                        # Tool availability check
-deadcode explain <id>                  # Full evidence dump for one finding
 deadcode adapters                      # List supported languages and tools
+deadcode ignore list                   # Print rules in the discovered ignore file
+deadcode ignore validate               # Parse + validate the ignore file
+deadcode explain <id>                  # (v0.4) Full evidence dump for one finding
 ```
 
 ### Scan flags
@@ -237,10 +239,14 @@ deadcode adapters                      # List supported languages and tools
 --kind <list>           Restrict to kinds: unused_function,unused_import
 --min-confidence <f>    Filter findings below this confidence (0.0–1.0)
 --exclude-tests         Drop findings whose only callers are tests
---since <ref>           Diff mode: only findings introduced since git ref
+--ignore-decorators <l> Add Python decorator glob patterns to the ignore list
+--no-default-decorators Disable the built-in framework decorator list
+--ignore-file <path>    Use a specific .deadcode-ignore.toml
+--no-ignore-file        Disable ignore-file loading entirely
+--show-ignored          Print suppressed findings (with reasons)
+--since <ref>           (v0.4) Diff mode: only findings introduced since git ref
 --threshold <n>         Fail if findings count exceeds this
 --exit-code <n>         Exit code when threshold exceeded (default 0)
---dry-run               Show what would run; don't execute
 -v, --verbose           Verbose output (preserves console reporter chatter)
 ```
 
@@ -255,7 +261,9 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 ## Implementation choices
 
 - **Language: Go.** Single static binary. Excellent subprocess + JSON handling. Fast startup (matters for skill-driven invocation). Easy cross-compilation.
-- **CLI framework:** stdlib `flag` for v0.1 (hermetic, no deps). Migrate to Cobra in v0.2 if subcommand sprawl warrants it.
+- **CLI framework:** stdlib `flag` for v0.1–v0.2 (still hermetic enough). Migrate to Cobra in v0.3 if subcommand sprawl warrants it.
+- **TOML parser:** `github.com/BurntSushi/toml` (the standard Go TOML library).
+- **Glob matching:** `github.com/bmatcuk/doublestar/v4` for `**` support.
 - **Adapter delivery:** built-in, compiled into the binary. No runtime plugin loading in v1. External adapters via shell-script contract reserved for v0.4+.
 - **Concurrency:** one goroutine per adapter run; `errgroup` for coordination. Adapters are independent.
 - **Output ordering:** sort findings by `(file, line)` for deterministic diffs.
@@ -272,24 +280,110 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 
 **Goal:** prove the architecture end-to-end with one real language. Usable from a Claude skill on day one.
 
-### v0.2 — Breadth
+### v0.2 — Unified ignore mechanism (current)
+- `.deadcode-ignore.toml` filter (see "Unified ignore" below)
+- `deadcode ignore list / validate` subcommand
+- `--ignore-file`, `--no-ignore-file`, `--show-ignored` scan flags
+- Auto-discovery of ignore file by walking up from scan root
+- Project-root detection (`.git`, `pyproject.toml`, `package.json`,
+  `Cargo.toml`, `go.mod`) for portable file globs
+- Validated against bd-tracker: 137 → 16 findings (88% reduction)
+
+### v0.3 — Breadth
 - Add TypeScript (`knip`) and Go (`staticcheck`) adapters
-- `.deadcoderc` config with entry points and excludes
 - Confidence normalization documented per-adapter
 - Markdown reporter
-- Migrate to Cobra if helpful
+- Migrate to Cobra if subcommand sprawl warrants it
 
-### v0.3 — Agent integration
+### v0.4 — Agent integration
 - `--since <ref>` diff mode
 - `explain <id>` subcommand
 - SARIF reporter (for GitHub code scanning)
 - Heuristic fallback adapter for unsupported languages
+- `deadcode ignore add <id>` writer
+- `deadcode ignore stats` (which rules are doing work)
 
-### v0.4 — Polish
+### v0.5 — Polish
 - Auto-detect entry points from `package.json`, `pyproject.toml`, `Cargo.toml`
 - Result caching between runs
 - Brew formula and install script
 - Companion `deadcode` Claude skill (mirrors the `jscpd` skill)
+
+## Unified ignore (v0.2)
+
+The `.deadcode-ignore.toml` file is the canonical mechanism for
+suppressing findings across every language and tool. It lives at the
+repo root and is loaded automatically by walking upward from the scan
+root, like `.gitignore`.
+
+```toml
+# Ignore by exact stable Finding ID — most precise, survives refactors
+[[ignore]]
+id = "py:src/foo.py:42:unused_function:legacy_handler"
+reason = "Called via reflection in worker dispatcher"
+
+# Ignore by file glob + kind — kills the ORM/schema bucket
+[[ignore]]
+file = "src/models/**.py"
+kinds = ["unused_field", "unused_variable"]
+reason = "Pydantic/SQLAlchemy field declarations"
+
+# Ignore by symbol pattern across the repo
+[[ignore]]
+symbol = "*_at"
+languages = ["python"]
+kinds = ["unused_variable"]
+reason = "ORM timestamp columns"
+```
+
+### Matcher semantics
+
+A rule matches a finding when **every** specified field matches:
+
+| Field       | Type    | Match against           | Notes |
+|-------------|---------|-------------------------|-------|
+| `id`        | string  | exact `Finding.ID`      | Most precise |
+| `file`      | glob    | path or basename        | Doublestar globs (`**`) |
+| `symbol`    | glob    | `Finding.Symbol`        | Doublestar globs |
+| `kinds`     | list    | `Finding.Kind`          | Any-of |
+| `languages` | list    | `Finding.Language`      | Any-of |
+| `tools`     | list    | `Finding.Tool`          | Any-of |
+| `reason`    | string  | (not matched)           | **Required** for documentation |
+
+A rule with no matchers matches nothing — `deadcode ignore validate`
+catches this.
+
+### Resolution order
+
+1. `--ignore-file <path>` — explicit, must exist
+2. Discovered file (walk upward from scan root for `.deadcode-ignore.toml`)
+3. None (no filter)
+
+`--no-ignore-file` disables loading entirely.
+
+### File-glob roots
+
+File globs are resolved against multiple candidate roots so the same
+ignore file works whether you scan the whole repo or a subdirectory:
+
+1. The absolute file path itself
+2. The directory containing the ignore file (the repo root when the
+   file is committed at repo root)
+3. Each scan path passed via CLI args
+4. The detected project root for each scan path (nearest ancestor
+   containing `.git`, `pyproject.toml`, `package.json`, `Cargo.toml`,
+   or `go.mod`)
+5. The basename (so `**.py` works anywhere)
+
+A glob matches if **any** of these resolutions matches. False positives
+are extremely unlikely because all matchers on a rule must AND together.
+
+### First-match-wins
+
+Rules are evaluated in order and the first match wins. Order specific
+rules above general ones if you want them to attribute correctly. The
+`--show-ignored` flag prints which rule (by index) suppressed each
+finding so you can audit the ruleset.
 
 ## Open questions
 

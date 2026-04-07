@@ -13,37 +13,50 @@ import (
 	"github.com/sglyon/deadcode/internal/runner"
 )
 
-// JSON writes the report as the canonical schema document.
-func JSON(w io.Writer, r *runner.Result) error {
+// JSON writes the report as the canonical schema document. When
+// showIgnored is true, the suppressed findings appear in the `ignored`
+// array; otherwise only the count appears in `summary.findings_ignored`.
+func JSON(w io.Writer, r *runner.Result, showIgnored bool) error {
 	doc := finding.Report{
 		SchemaVersion: finding.SchemaVersion,
 		Summary: finding.Summary{
 			Languages:        r.LanguagesPresent,
 			FilesScanned:     r.FilesScanned,
 			FindingsTotal:    len(r.Findings),
+			FindingsIgnored:  len(r.Ignored),
 			ToolsRun:         dedupSorted(r.ToolsRun),
 			ToolsUnavailable: r.ToolsUnavailable,
+			IgnoreFile:       r.IgnoreFile,
 			DurationMs:       r.DurationMs,
 		},
 		Findings: r.Findings,
+	}
+	if showIgnored {
+		doc.Ignored = r.Ignored
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(doc)
 }
 
-// Console writes a compact human-readable report. Use Verbose for the
-// full evidence dump.
-func Console(w io.Writer, r *runner.Result, verbose bool) error {
+// Console writes a compact human-readable report. Use verbose for the
+// full evidence dump and showIgnored to print suppressed findings too.
+func Console(w io.Writer, r *runner.Result, verbose, showIgnored bool) error {
+	ignoredNote := ""
+	if len(r.Ignored) > 0 {
+		ignoredNote = fmt.Sprintf(" [%d ignored]", len(r.Ignored))
+	}
+
 	if len(r.Findings) == 0 {
-		fmt.Fprintf(w, "deadcode: no findings (%d files, %s, %dms)\n",
-			r.FilesScanned, joinOrNone(r.LanguagesPresent), r.DurationMs)
+		fmt.Fprintf(w, "deadcode: no findings (%d files, %s, %dms)%s\n",
+			r.FilesScanned, joinOrNone(r.LanguagesPresent), r.DurationMs, ignoredNote)
+		printIgnored(w, r, showIgnored)
 		printUnavailable(w, r)
 		return nil
 	}
 
-	fmt.Fprintf(w, "deadcode: %d finding(s) across %d file(s) (%s, %dms)\n\n",
-		len(r.Findings), countFiles(r.Findings), joinOrNone(r.LanguagesPresent), r.DurationMs)
+	fmt.Fprintf(w, "deadcode: %d finding(s) across %d file(s) (%s, %dms)%s\n\n",
+		len(r.Findings), countFiles(r.Findings), joinOrNone(r.LanguagesPresent), r.DurationMs, ignoredNote)
 
 	for _, f := range r.Findings {
 		fmt.Fprintf(w, "  %s:%d  [%s %s %.0f%%]  %s\n",
@@ -53,8 +66,21 @@ func Console(w io.Writer, r *runner.Result, verbose bool) error {
 		}
 	}
 	fmt.Fprintln(w)
+	printIgnored(w, r, showIgnored)
 	printUnavailable(w, r)
 	return nil
+}
+
+func printIgnored(w io.Writer, r *runner.Result, showIgnored bool) {
+	if !showIgnored || len(r.Ignored) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "ignored (%d):\n", len(r.Ignored))
+	for _, f := range r.Ignored {
+		fmt.Fprintf(w, "  %s:%d  [%s %s]  %s\n", f.File, f.Line, f.Tool, f.Kind, f.Message)
+		fmt.Fprintf(w, "    rule #%d: %s\n", f.MatchedRule, f.IgnoreReason)
+	}
+	fmt.Fprintln(w)
 }
 
 func printUnavailable(w io.Writer, r *runner.Result) {

@@ -5,6 +5,7 @@ package runner
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/sglyon/deadcode/internal/adapter"
 	"github.com/sglyon/deadcode/internal/finding"
+	"github.com/sglyon/deadcode/internal/ignore"
 )
 
 // Options controls a Run invocation.
@@ -24,6 +26,7 @@ type Options struct {
 	ExcludeTests        bool
 	IgnoreDecorators    []string
 	NoDefaultDecorators bool
+	IgnoreRules         *ignore.Ruleset // nil means no ignore filtering
 	Verbose             bool
 }
 
@@ -31,10 +34,12 @@ type Options struct {
 // deterministic output.
 type Result struct {
 	Findings         []finding.Finding
+	Ignored          []finding.IgnoredFinding
 	LanguagesPresent []string
 	FilesScanned     int
 	ToolsRun         []string
 	ToolsUnavailable []string
+	IgnoreFile       string
 	DurationMs       int64
 }
 
@@ -101,19 +106,106 @@ func Run(ctx context.Context, adapters []adapter.Adapter, opts Options) (*Result
 	allFindings = filterFindings(allFindings, opts)
 	sortFindings(allFindings)
 
+	if opts.IgnoreRules != nil {
+		opts.IgnoreRules.MatchRoots = absPaths(opts.Paths)
+	}
+	kept, ignored := applyIgnoreRules(allFindings, opts.IgnoreRules)
+
 	totalFiles := 0
 	for _, n := range filesByLang {
 		totalFiles += n
 	}
 
+	ignoreFilePath := ""
+	if opts.IgnoreRules != nil {
+		ignoreFilePath = opts.IgnoreRules.Path
+	}
+
 	return &Result{
-		Findings:         allFindings,
+		Findings:         kept,
+		Ignored:          ignored,
 		LanguagesPresent: languages,
 		FilesScanned:     totalFiles,
 		ToolsRun:         toolsRun,
 		ToolsUnavailable: toolsUnavailable,
+		IgnoreFile:       ignoreFilePath,
 		DurationMs:       time.Since(start).Milliseconds(),
 	}, nil
+}
+
+// absPaths converts each path to its absolute form, dropping any that
+// fail, then enriches the result with each path's discovered project
+// root (so a glob like "src/models/**.py" works whether the user scans
+// the whole repo or just src/models). The matcher tries each candidate
+// in turn — false positives are extremely unlikely because all matchers
+// on a rule must AND together.
+func absPaths(paths []string) []string {
+	seen := make(map[string]bool, 2*len(paths))
+	out := make([]string, 0, 2*len(paths))
+	add := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			continue
+		}
+		add(abs)
+		if root := projectRoot(abs); root != "" {
+			add(root)
+		}
+	}
+	return out
+}
+
+// projectRoot walks upward from start looking for the nearest ancestor
+// containing one of the well-known project markers. Returns "" if none
+// found before hitting the filesystem root.
+func projectRoot(start string) string {
+	markers := []string{".git", "pyproject.toml", "package.json", "Cargo.toml", "go.mod"}
+	dir := start
+	if info, err := os.Stat(start); err == nil && !info.IsDir() {
+		dir = filepath.Dir(start)
+	}
+	for {
+		for _, m := range markers {
+			if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+				return dir
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+// applyIgnoreRules splits findings into (kept, ignored) using the ruleset.
+// If rules is nil or empty, all findings are kept.
+func applyIgnoreRules(findings []finding.Finding, rules *ignore.Ruleset) ([]finding.Finding, []finding.IgnoredFinding) {
+	if rules == nil || rules.Empty() {
+		return findings, nil
+	}
+	kept := findings[:0]
+	var ignored []finding.IgnoredFinding
+	for _, f := range findings {
+		idx := rules.Match(f)
+		if idx < 0 {
+			kept = append(kept, f)
+			continue
+		}
+		ignored = append(ignored, finding.IgnoredFinding{
+			Finding:      f,
+			IgnoreReason: rules.Rules[idx].Reason,
+			MatchedRule:  idx,
+		})
+	}
+	return kept, ignored
 }
 
 // scanPaths walks the given roots and returns the set of languages present

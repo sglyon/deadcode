@@ -37,6 +37,8 @@ func Main(args []string) int {
 		return runDoctor(args[2:])
 	case "adapters":
 		return runAdapters()
+	case "ignore":
+		return runIgnore(args[2:])
 	case "version", "--version", "-v":
 		fmt.Println("deadcode", Version)
 		return 0
@@ -66,9 +68,10 @@ USAGE:
   deadcode scan [path] [flags]       explicit scan
   deadcode doctor                    check tool availability
   deadcode adapters                  list supported languages and tools
+  deadcode ignore <subcommand>       manage .deadcode-ignore.toml
   deadcode version                   print version
 
-Run 'deadcode scan --help' for scan flags.
+Run 'deadcode scan --help' or 'deadcode ignore help' for details.
 `)
 }
 
