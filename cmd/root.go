@@ -18,7 +18,7 @@ import (
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.5.0"
+const Version = "0.5.1"
 
 // builtinAdapters returns every adapter compiled into this binary.
 // Adding a language means adding it here.
@@ -28,6 +28,7 @@ func builtinAdapters() []adapter.Adapter {
 		javascript.New(),
 		elixir.New(),
 		golang.New(),
+		golang.NewXDeadcode(),
 	}
 }
 

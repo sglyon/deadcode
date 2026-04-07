@@ -1,9 +1,14 @@
-// Package main is a deliberately-mixed fixture for the staticcheck
-// adapter: some things are used, others are dead code of different
-// kinds.
+// Package main is a deliberately-mixed fixture exercising both Go
+// adapters: the package-level unused symbols below are caught by
+// staticcheck, while the unused export in ./lib is only caught by
+// x/tools/cmd/deadcode.
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"example.com/gosample/lib"
+)
 
 type UsedThing struct {
 	Name string
@@ -18,7 +23,7 @@ const unusedConst = "goodbye"
 
 func main() {
 	t := UsedThing{Name: "world"}
-	fmt.Println(UsedConst, t.Name, usedHelper(2))
+	fmt.Println(UsedConst, t.Name, usedHelper(2), lib.UsedByMain())
 }
 
 func usedHelper(x int) int {

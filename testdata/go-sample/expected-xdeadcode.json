@@ -1,0 +1,44 @@
+[
+	{
+		"Name": "main",
+		"Path": "example.com/gosample",
+		"Funcs": [
+			{
+				"Name": "unusedHelper",
+				"Position": {
+					"File": "main.go",
+					"Line": 33,
+					"Col": 6
+				},
+				"Generated": false,
+				"Marker": false
+			},
+			{
+				"Name": "orphanFunc",
+				"Position": {
+					"File": "orphan.go",
+					"Line": 11,
+					"Col": 6
+				},
+				"Generated": false,
+				"Marker": false
+			}
+		]
+	},
+	{
+		"Name": "lib",
+		"Path": "example.com/gosample/lib",
+		"Funcs": [
+			{
+				"Name": "DeadExport",
+				"Position": {
+					"File": "lib/lib.go",
+					"Line": 16,
+					"Col": 6
+				},
+				"Generated": false,
+				"Marker": false
+			}
+		]
+	}
+]

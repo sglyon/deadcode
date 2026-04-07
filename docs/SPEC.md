@@ -184,6 +184,7 @@ This is the only extension point. Adding a language is ~50 lines plus a parser.
 | JavaScript   | `knip`                            | **shipped v0.3** | Same |
 | Elixir       | `mix compile` (set-theoretic type system) | **shipped v0.4** | Built-in; no install; improves every Elixir release |
 | Go           | `staticcheck -checks=U1000`       | **shipped v0.5** | Standard, accurate, NDJSON output |
+| Go           | `golang.org/x/tools/cmd/deadcode` | **shipped v0.5.1** | Whole-program RTA from main; closes staticcheck's non-main-package blindspot |
 | Rust         | `cargo +nightly udeps` (deps) + `cargo check` warnings | Best available |
 | Java         | `pmd` UnusedPrivateMethod ruleset | No IDE dependency |
 | Ruby         | `debride`                         | Only real option |
@@ -361,10 +362,42 @@ Known v0.5 limitation (staticcheck's, not ours):
   supplement with `golang.org/x/tools/cmd/deadcode` (future v0.5.x
   second-source adapter).
 
-### v0.5.x — Coverage
+### v0.5.1 — Second Go source (current)
+- Added `golang.org/x/tools/cmd/deadcode` as a second Go adapter
+  (`xdeadcode`) running alongside staticcheck
+- Closes the staticcheck blindspot proven during v0.5 dogfood:
+  exported symbols in non-main packages (even `internal/`) that
+  staticcheck's U1000 silently skips. xdeadcode catches them via
+  whole-program Rapid Type Analysis from `main` functions
+- First adapter in the project that targets an already-covered
+  language — exercises the multi-tool-per-language pattern that
+  `Finding.Tool` was designed for in v0.1. Both adapters run in
+  parallel via the existing runner, emit distinct Findings, and
+  the reporter surfaces which tool found what
+- Gracefully handles "no main packages" (library-only modules):
+  treats as clean no-op, not an error
+- Generated files and marker interface methods filtered by the
+  upstream tool's defaults; we also re-filter defensively
+- Symbol format: `package.Name` (e.g., `lib.DeadExport`), matching
+  how Go developers reference symbols in mental model
+- Regression fixture at testdata/go-sample/expected-xdeadcode.json
+  captured from the deliberately-expanded fixture (main package
+  with dead code + library sub-package with an exported-but-unused
+  function — the exact blindspot case)
+
+Known v0.5.1 behavior worth flagging:
+  When staticcheck and xdeadcode both flag the same function (e.g.
+  `main.unusedHelper`), two Findings are emitted with slightly
+  different symbol formats (`unusedHelper` vs `main.unusedHelper`).
+  This is intentional-for-now — tool agreement is useful signal —
+  but creates visual duplication in the report. Runner-level dedup
+  is a v0.6 topic; it needs careful thought about evidence merging,
+  symbol arbitration, and interaction with the unified ignore file.
+
+### v0.6 — Coverage
 - Full Elixir umbrella app support (multi-child section filtering)
-- `golang.org/x/tools/cmd/deadcode` as a second Go source for
-  unused exports in internal packages
+- Cross-tool deduplication at the runner level (for e.g. staticcheck
+  + xdeadcode agreement)
 - Confidence normalization documented per-adapter
 - Markdown reporter
 

@@ -102,6 +102,7 @@ the first match wins. `reason` is required. See
 | TypeScript/JS  | `knip`    | `npm install -g knip` (or auto-fallback to `npx -y knip`) |
 | Elixir         | `mix compile` + Elixir ≥ 1.18 type system | `brew install elixir` or [elixir-lang.org/install](https://elixir-lang.org/install.html) |
 | Go             | `staticcheck -checks=U1000` | `go install honnef.co/go/tools/cmd/staticcheck@latest` |
+| Go             | `golang.org/x/tools/cmd/deadcode` (second source) | `go install golang.org/x/tools/cmd/deadcode@latest` |
 
 Run `deadcode doctor` to see which adapters are usable on your machine.
 More adapters land in v0.3.x — see [`docs/SPEC.md`](docs/SPEC.md).
