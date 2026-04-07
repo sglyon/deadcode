@@ -394,10 +394,34 @@ Known v0.5.1 behavior worth flagging:
   is a v0.6 topic; it needs careful thought about evidence merging,
   symbol arbitration, and interaction with the unified ignore file.
 
-### v0.6 — Coverage
+### v0.6 — Cross-tool dedup (current)
+- New `runner.dedupeFindings` collapses findings flagged by multiple
+  adapters into one merged Finding
+- Dedup key: `(language, file, line, kind)`. Symbol intentionally
+  excluded — that's the field where adapters disagree
+  (`unusedHelper` vs `main.unusedHelper`)
+- Merge rules: longest symbol wins (proxy for "most qualified"),
+  longest message wins, max confidence, sorted union of tools,
+  evidence merged with per-tool key prefixes
+- Schema-additive change: new `Finding.Tools []string` field
+  containing every contributing adapter (sorted). Single-tool
+  findings always have `Tools = [Tool]` for consistency. The
+  legacy `Tool` field stays as the "primary" (longest-symbol
+  provider) for back-compat
+- Pretty reporter shows multi-tool findings with a styled
+  `[staticcheck+xdeadcode]` agreement tag after the symbol;
+  single-tool findings unchanged
+- Dedup runs BEFORE the ignore-file pass so user rules match
+  the merged form. Users matching by `symbol = "..."` should use
+  glob patterns (already documented best practice) so the
+  merged most-qualified symbol form is matched correctly
+- Validated end-to-end on testdata/go-sample: 9 findings collapse
+  to 7 (the two staticcheck+xdeadcode overlaps merge), each
+  showing the agreement tag in --pretty and the merged Tools
+  array in --json
+
+### v0.6.x — Coverage
 - Full Elixir umbrella app support (multi-child section filtering)
-- Cross-tool deduplication at the runner level (for e.g. staticcheck
-  + xdeadcode agreement)
 - Confidence normalization documented per-adapter
 - Markdown reporter
 

@@ -63,6 +63,7 @@ type prettyStyles struct {
 	confLow       lipgloss.Style
 	symbol        lipgloss.Style
 	highlightMark lipgloss.Style
+	agreementTag  lipgloss.Style
 	dim           lipgloss.Style
 	ignoredHeader lipgloss.Style
 	ignoredItem   lipgloss.Style
@@ -100,6 +101,7 @@ func newPrettyStyles(r *lipgloss.Renderer) prettyStyles {
 		confLow:       mk().Foreground(grey),
 		symbol:        mk().Bold(true),
 		highlightMark: mk().Foreground(red).Bold(true),
+		agreementTag:  mk().Foreground(cyanDim).Italic(true),
 		dim:           mk().Foreground(grey),
 		ignoredHeader: mk().Bold(true).Foreground(grey),
 		ignoredItem:   mk().Foreground(grey),
@@ -149,15 +151,20 @@ func writeFindings(w io.Writer, findings []finding.Finding, s prettyStyles) {
 			conf := fmt.Sprintf("%3.0f%%", f.Confidence*100)
 
 			confStyled := pickConfStyle(s, f.Confidence).Render(conf)
+			agreement := ""
+			if len(f.Tools) > 1 {
+				agreement = "  " + s.agreementTag.Render("["+strings.Join(f.Tools, "+")+"]")
+			}
 			highlight := ""
 			if f.Confidence >= 0.85 {
 				highlight = "  " + s.highlightMark.Render("← high confidence")
 			}
-			fmt.Fprintf(w, "    %s  %s  %s  %s%s\n",
+			fmt.Fprintf(w, "    %s  %s  %s  %s%s%s\n",
 				s.lineNum.Render(line),
 				s.kindTag.Render(kind),
 				confStyled,
 				s.symbol.Render(f.Symbol),
+				agreement,
 				highlight,
 			)
 		}

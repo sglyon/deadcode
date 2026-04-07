@@ -18,7 +18,7 @@ import (
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.5.1"
+const Version = "0.6.0"
 
 // builtinAdapters returns every adapter compiled into this binary.
 // Adding a language means adding it here.

@@ -39,6 +39,15 @@ const (
 
 // Finding is the normalized representation of a single dead-code report
 // from any adapter. See docs/SPEC.md for field semantics.
+//
+// Tool vs Tools: Tool is the single "primary" tool that produced the
+// finding (the first adapter in ordering, or the longest-symbol
+// adapter after dedup). Tools is the full list of tools that agreed
+// — for findings that came from a single adapter Tools has one entry
+// equal to Tool; for findings merged by the runner's cross-tool
+// dedup pass Tools contains all participating adapters in sorted
+// order. Consumers preferring a single string value should use Tool;
+// consumers wanting agreement info should use Tools.
 type Finding struct {
 	ID         string            `json:"id"`
 	File       string            `json:"file"`
@@ -48,6 +57,7 @@ type Finding struct {
 	Kind       Kind              `json:"kind"`
 	Language   string            `json:"language"`
 	Tool       string            `json:"tool"`
+	Tools      []string          `json:"tools,omitempty"`
 	Confidence float64           `json:"confidence"`
 	Message    string            `json:"message"`
 	Evidence   map[string]string `json:"evidence,omitempty"`

@@ -106,6 +106,11 @@ func Run(ctx context.Context, adapters []adapter.Adapter, opts Options) (*Result
 	allFindings = filterFindings(allFindings, opts)
 	sortFindings(allFindings)
 
+	// Cross-tool dedup: collapse findings that multiple adapters
+	// independently flagged. Runs BEFORE the ignore-file pass so
+	// user rules match the merged form (the most-qualified symbol).
+	allFindings = dedupeFindings(allFindings)
+
 	if opts.IgnoreRules != nil {
 		opts.IgnoreRules.MatchRoots = absPaths(opts.Paths)
 	}
