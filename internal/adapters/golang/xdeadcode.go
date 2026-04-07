@@ -205,8 +205,9 @@ func parseXDeadcodeOutput(out []byte, projectRoot string, opts adapter.RunOption
 			// The user's mental model is "which function in which
 			// package" — matches how Go developers reference symbols.
 			symbol := fmt.Sprintf("%s.%s", pkg.Name, fn.Name)
+			idPath := relPathForID(fn.Position.File, projectRoot)
 			findings = append(findings, finding.Finding{
-				ID:         fmt.Sprintf("go:%s:%d:%s:%s", fn.Position.File, fn.Position.Line, finding.KindUnusedFunction, symbol),
+				ID:         fmt.Sprintf("go:%s:%d:%s:%s", idPath, fn.Position.Line, finding.KindUnusedFunction, symbol),
 				File:       absFile,
 				Line:       fn.Position.Line,
 				Symbol:     symbol,

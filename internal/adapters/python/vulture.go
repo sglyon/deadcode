@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -65,7 +66,43 @@ func (v *Vulture) Run(ctx context.Context, paths []string, opts adapter.RunOptio
 			return nil, fmt.Errorf("vulture failed: %w", err)
 		}
 	}
-	return parseVultureOutput(out, opts), nil
+	// Resolve a stable project root for ID-path normalization. We
+	// walk up from the first scan path looking for a Python project
+	// marker (pyproject.toml, setup.py, setup.cfg) or .git. Falls
+	// back to the scan path itself if nothing matches. The result
+	// is used ONLY for ID building — the user-visible File field
+	// stays absolute so editors/agents can jump to it.
+	projectRoot := pythonProjectRoot(paths[0])
+	return parseVultureOutput(out, projectRoot, opts), nil
+}
+
+// pythonProjectRoot walks upward from start looking for the nearest
+// directory containing a Python project marker. Returns the start
+// directory itself if no marker is found, so IDs are still stable
+// (just rooted at the scan path instead of a project root).
+func pythonProjectRoot(start string) string {
+	abs, err := filepath.Abs(start)
+	if err != nil {
+		return start
+	}
+	dir := abs
+	if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+		dir = filepath.Dir(abs)
+	}
+	startDir := dir
+	markers := []string{"pyproject.toml", "setup.py", "setup.cfg", ".git"}
+	for {
+		for _, m := range markers {
+			if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+				return dir
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return startDir
+		}
+		dir = parent
+	}
 }
 
 // vultureLine matches both unused-symbol and unreachable-code lines.
@@ -84,7 +121,7 @@ var vultureLine = regexp.MustCompile(`^(.+?):(\d+):\s+(.+?)\s+\((\d+)% confidenc
 //  2. symbol name
 var unusedSymbol = regexp.MustCompile(`^unused\s+(\w+)\s+'([^']+)'$`)
 
-func parseVultureOutput(out []byte, opts adapter.RunOptions) []finding.Finding {
+func parseVultureOutput(out []byte, projectRoot string, opts adapter.RunOptions) []finding.Finding {
 	var findings []finding.Finding
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 	for scanner.Scan() {
@@ -131,7 +168,7 @@ func parseVultureOutput(out []byte, opts adapter.RunOptions) []finding.Finding {
 		}
 
 		findings = append(findings, finding.Finding{
-			ID:         buildID("py", file, lineNum, kind, symbol),
+			ID:         buildID("py", absFile, projectRoot, lineNum, kind, symbol),
 			File:       absFile,
 			Line:       lineNum,
 			Symbol:     symbol,
@@ -178,14 +215,21 @@ func titleCase(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-func buildID(langPrefix, file string, line int, kind finding.Kind, symbol string) string {
-	rel := file
-	if abs, err := filepath.Abs(file); err == nil {
-		if cwd, err := filepath.Abs("."); err == nil {
-			if r, err := filepath.Rel(cwd, abs); err == nil {
-				rel = r
-			}
-		}
+// buildID constructs a stable Finding ID with a path relative to
+// the project root. This makes IDs portable across machines and
+// shells — two team members running deadcode on the same project
+// from different working directories produce identical IDs, so a
+// committed .deadcode-ignore.toml with `id =` rules works for
+// everyone. We never use cwd-relative paths or absolute paths in
+// IDs (which was the v0.6 bug surfaced during dogfood).
+//
+// Falls back to the absolute path if it can't be made relative
+// (e.g., across drives on Windows). Better a stable absolute than
+// a cwd-dependent relative.
+func buildID(langPrefix, absFile, projectRoot string, line int, kind finding.Kind, symbol string) string {
+	rel := absFile
+	if r, err := filepath.Rel(projectRoot, absFile); err == nil && !strings.HasPrefix(r, "..") {
+		rel = filepath.ToSlash(r)
 	}
 	return fmt.Sprintf("%s:%s:%d:%s:%s", langPrefix, rel, line, kind, symbol)
 }

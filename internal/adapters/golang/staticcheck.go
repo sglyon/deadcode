@@ -106,7 +106,7 @@ func runStaticcheck(ctx context.Context, root string, opts adapter.RunOptions) (
 			return nil, fmt.Errorf("staticcheck failed in %s: %w", root, runErr)
 		}
 	}
-	return parseStaticcheckOutput(out, opts), nil
+	return parseStaticcheckOutput(out, root, opts), nil
 }
 
 // staticcheckError translates a staticcheck exit code > 1 into an
@@ -193,8 +193,11 @@ type staticcheckRelat struct {
 }
 
 // parseStaticcheckOutput converts a stream of NDJSON diagnostics
-// from `staticcheck -f json` into normalized Findings.
-func parseStaticcheckOutput(out []byte, opts adapter.RunOptions) []finding.Finding {
+// from `staticcheck -f json` into normalized Findings. projectRoot
+// is used to build IDs with paths relative to the go.mod directory
+// so they're stable across machines and shells (the user-visible
+// File field stays absolute for editor jump-to support).
+func parseStaticcheckOutput(out []byte, projectRoot string, opts adapter.RunOptions) []finding.Finding {
 	var findings []finding.Finding
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
@@ -219,8 +222,9 @@ func parseStaticcheckOutput(out []byte, opts adapter.RunOptions) []finding.Findi
 			continue
 		}
 		kind, symbol := classifyMessage(diag.Message)
+		idPath := relPathForID(diag.Location.File, projectRoot)
 		findings = append(findings, finding.Finding{
-			ID:         fmt.Sprintf("go:%s:%d:%s:%s", diag.Location.File, diag.Location.Line, kind, symbol),
+			ID:         fmt.Sprintf("go:%s:%d:%s:%s", idPath, diag.Location.Line, kind, symbol),
 			File:       diag.Location.File,
 			Line:       diag.Location.Line,
 			Symbol:     symbol,
@@ -277,6 +281,27 @@ var patterns = []struct {
 	{"const ", finding.KindUnusedConstant},
 	{"var ", finding.KindUnusedVariable},
 	{"field ", finding.KindUnusedField},
+}
+
+// relPathForID normalizes a file path to a project-relative form
+// suitable for use in a Finding.ID. Both Go adapters share this so
+// IDs are consistent regardless of which tool found the dead code.
+//
+// We accept absolute or already-relative paths. If the input is
+// absolute and inside projectRoot, we strip the prefix. If the input
+// is already relative, we return it as-is. If neither works (across
+// drives, weird paths), we return the input unchanged — better
+// stable-but-ugly than cwd-dependent.
+func relPathForID(file, projectRoot string) string {
+	if !filepath.IsAbs(file) {
+		// Already relative — assume it's project-relative (this is
+		// how x/tools/cmd/deadcode emits paths).
+		return filepath.ToSlash(file)
+	}
+	if r, err := filepath.Rel(projectRoot, file); err == nil && !strings.HasPrefix(r, "..") {
+		return filepath.ToSlash(r)
+	}
+	return file
 }
 
 func looksLikeTestFile(path string) bool {

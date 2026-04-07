@@ -22,7 +22,7 @@ func TestParseFixtureRegression(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 
-	findings := parseStaticcheckOutput(out, adapter.RunOptions{})
+	findings := parseStaticcheckOutput(out, "/proj", adapter.RunOptions{})
 	if got, want := len(findings), 6; got != want {
 		t.Fatalf("expected %d findings from fixture, got %d:\n%+v", want, got, findings)
 	}
@@ -119,7 +119,7 @@ func TestParseSkipsNonU1000(t *testing.T) {
 	out := []byte(`{"code":"SA4006","location":{"file":"a.go","line":1,"column":1},"message":"this value is never used"}
 {"code":"U1000","location":{"file":"a.go","line":5,"column":6},"message":"func unused is unused"}
 `)
-	findings := parseStaticcheckOutput(out, adapter.RunOptions{})
+	findings := parseStaticcheckOutput(out, "/proj", adapter.RunOptions{})
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding (U1000 only), got %d", len(findings))
 	}
@@ -133,7 +133,7 @@ func TestParseSkipsInvalidJSON(t *testing.T) {
 {"code":"U1000","location":{"file":"a.go","line":1,"column":1},"message":"func x is unused"}
 also not json
 `)
-	findings := parseStaticcheckOutput(out, adapter.RunOptions{})
+	findings := parseStaticcheckOutput(out, "/proj", adapter.RunOptions{})
 	if len(findings) != 1 {
 		t.Errorf("expected 1 finding (invalid lines skipped), got %d", len(findings))
 	}
@@ -144,12 +144,51 @@ func TestParseExcludeTests(t *testing.T) {
 {"code":"U1000","location":{"file":"/proj/foo_test.go","line":1,"column":1},"message":"func helperT is unused"}
 {"code":"U1000","location":{"file":"/proj/testdata/dead.go","line":1,"column":1},"message":"func fixture is unused"}
 `)
-	findings := parseStaticcheckOutput(out, adapter.RunOptions{ExcludeTests: true})
+	findings := parseStaticcheckOutput(out, "/proj", adapter.RunOptions{ExcludeTests: true})
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding after excluding tests, got %d: %+v", len(findings), findings)
 	}
 	if findings[0].Symbol != "real" {
 		t.Errorf("wrong finding survived: %+v", findings[0])
+	}
+}
+
+// TestStaticcheckIDsAreProjectRelative pins the v0.6.1 dogfood fix:
+// the ID field uses paths relative to the go.mod root. Without this,
+// staticcheck's absolute file paths would make IDs machine-specific.
+func TestStaticcheckIDsAreProjectRelative(t *testing.T) {
+	out := []byte(`{"code":"U1000","location":{"file":"/abs/proj/internal/runner/dead.go","line":42,"column":6},"message":"func helper is unused"}
+{"code":"U1000","location":{"file":"/abs/proj/main.go","line":5,"column":7},"message":"const X is unused"}
+`)
+	findings := parseStaticcheckOutput(out, "/abs/proj", adapter.RunOptions{})
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+	wantIDs := []string{
+		"go:internal/runner/dead.go:42:unused_function:helper",
+		"go:main.go:5:unused_constant:X",
+	}
+	for i, f := range findings {
+		if f.ID != wantIDs[i] {
+			t.Errorf("finding %d ID = %q, want %q", i, f.ID, wantIDs[i])
+		}
+	}
+}
+
+func TestRelPathForID(t *testing.T) {
+	cases := []struct {
+		file    string
+		root    string
+		want    string
+	}{
+		{"/abs/proj/lib/foo.go", "/abs/proj", "lib/foo.go"},
+		{"lib/foo.go", "/abs/proj", "lib/foo.go"}, // already relative
+		{"/abs/elsewhere/foo.go", "/abs/proj", "/abs/elsewhere/foo.go"}, // outside
+	}
+	for _, c := range cases {
+		if got := relPathForID(c.file, c.root); got != c.want {
+			t.Errorf("relPathForID(%q, %q) = %q, want %q", c.file, c.root, got, c.want)
+		}
 	}
 }
 

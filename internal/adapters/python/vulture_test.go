@@ -18,7 +18,7 @@ src/bar.py:80: unreachable code after 'return' (100% confidence)
 junk line that should be ignored
 `)
 
-	findings := parseVultureOutput(out, adapter.RunOptions{})
+	findings := parseVultureOutput(out, "/proj", adapter.RunOptions{})
 	if got, want := len(findings), 7; got != want {
 		t.Fatalf("expected %d findings, got %d: %+v", want, got, findings)
 	}
@@ -63,12 +63,36 @@ tests/test_foo.py:1: unused function 'helper' (60% confidence)
 src/test_helpers.py:1: unused function 'h' (60% confidence)
 `)
 
-	findings := parseVultureOutput(out, adapter.RunOptions{ExcludeTests: true})
+	findings := parseVultureOutput(out, "/proj", adapter.RunOptions{ExcludeTests: true})
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding after excluding tests, got %d: %+v", len(findings), findings)
 	}
 	if findings[0].Symbol != "real" {
 		t.Errorf("wrong finding survived: %+v", findings[0])
+	}
+}
+
+// TestVultureIDsAreProjectRelative pins the v0.6.1 dogfood fix:
+// the ID field uses paths relative to the project root, NOT to cwd.
+// Two team members running deadcode from different directories on
+// the same project must produce identical IDs so committed
+// .deadcode-ignore.toml rules with `id =` matchers work for both.
+func TestVultureIDsAreProjectRelative(t *testing.T) {
+	out := []byte(`/abs/proj/src/foo.py:42: unused function 'helper' (60% confidence)
+/abs/proj/lib/bar.py:5: unused import 'json' (90% confidence)
+`)
+	findings := parseVultureOutput(out, "/abs/proj", adapter.RunOptions{})
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+	wantIDs := []string{
+		"py:src/foo.py:42:unused_function:helper",
+		"py:lib/bar.py:5:unused_import:json",
+	}
+	for i, f := range findings {
+		if f.ID != wantIDs[i] {
+			t.Errorf("finding %d ID = %q, want %q", i, f.ID, wantIDs[i])
+		}
 	}
 }
 
