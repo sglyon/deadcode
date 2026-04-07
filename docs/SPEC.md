@@ -183,7 +183,7 @@ This is the only extension point. Adding a language is ~50 lines plus a parser.
 | TypeScript   | `knip`                            | **shipped v0.3** | Modern, project-aware, JSON output |
 | JavaScript   | `knip`                            | **shipped v0.3** | Same |
 | Elixir       | `mix compile` (set-theoretic type system) | **shipped v0.4** | Built-in; no install; improves every Elixir release |
-| Go           | `staticcheck -checks=U1000`       | Standard, accurate, JSON output |
+| Go           | `staticcheck -checks=U1000`       | **shipped v0.5** | Standard, accurate, NDJSON output |
 | Rust         | `cargo +nightly udeps` (deps) + `cargo check` warnings | Best available |
 | Java         | `pmd` UnusedPrivateMethod ruleset | No IDE dependency |
 | Ruby         | `debride`                         | Only real option |
@@ -331,9 +331,40 @@ through `mix compile` and our parser should pick them up
 automatically. Dialyzer integration is out of scope (declining
 relevance as Elixir's native type system matures).
 
-### v0.4.x — Coverage
-- Full umbrella app support (multi-child section filtering)
-- Add Go (`staticcheck`) adapter
+### v0.5 — Go (current)
+- Go adapter via `staticcheck -checks=U1000 -f json ./...`
+- NDJSON parser for staticcheck's diagnostic stream
+- Kind mapping: func/method/type/const/var/field from U1000 message
+  prefixes
+- Schema addition: `unused_type` kind (Go types, also reusable for
+  TypeScript types in a future knip cleanup pass)
+- Project-root discovery: nearest `go.mod`
+- Test file detection: anything ending in `_test.go` OR under a
+  `testdata/` directory (Go convention)
+- Friendly error when `go.sum` is missing or deps aren't downloaded
+- Runner now skips `testdata/` directories by default during language
+  detection, matching Go's tooling convention
+- Dogfood: deadcode scans itself and finds 0 issues — but the
+  exercise DID surface one dead export (`runner.UniqueLanguages`)
+  that staticcheck missed because of its documented blindspot
+  around exported symbols in non-main packages, even `internal/`
+  ones. Deleted manually; documented below
+
+Known v0.5 limitation (staticcheck's, not ours):
+  staticcheck does NOT flag exported identifiers in non-main
+  packages (functions, types, constants, etc.), even when they
+  live under `internal/`. The reasoning is that external consumers
+  might use them; the reality is that exports in internal/ packages
+  can only be used by the containing module. This means
+  `deadcode scan` on a Go project will miss dead exports that
+  `grep` would catch. Users who want this coverage should
+  supplement with `golang.org/x/tools/cmd/deadcode` (future v0.5.x
+  second-source adapter).
+
+### v0.5.x — Coverage
+- Full Elixir umbrella app support (multi-child section filtering)
+- `golang.org/x/tools/cmd/deadcode` as a second Go source for
+  unused exports in internal packages
 - Confidence normalization documented per-adapter
 - Markdown reporter
 

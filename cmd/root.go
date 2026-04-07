@@ -13,11 +13,12 @@ import (
 
 	"github.com/sglyon/deadcode/internal/adapter"
 	"github.com/sglyon/deadcode/internal/adapters/elixir"
+	"github.com/sglyon/deadcode/internal/adapters/golang"
 	"github.com/sglyon/deadcode/internal/adapters/javascript"
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 // builtinAdapters returns every adapter compiled into this binary.
 // Adding a language means adding it here.
@@ -26,6 +27,7 @@ func builtinAdapters() []adapter.Adapter {
 		python.New(),
 		javascript.New(),
 		elixir.New(),
+		golang.New(),
 	}
 }
 

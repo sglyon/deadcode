@@ -188,6 +188,7 @@ func knownKind(k string) bool {
 	case finding.KindUnusedFunction,
 		finding.KindUnusedMethod,
 		finding.KindUnusedClass,
+		finding.KindUnusedType,
 		finding.KindUnusedVariable,
 		finding.KindUnusedConstant,
 		finding.KindUnusedImport,

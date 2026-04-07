@@ -15,6 +15,7 @@ const (
 	KindUnusedFunction   Kind = "unused_function"
 	KindUnusedMethod     Kind = "unused_method"
 	KindUnusedClass      Kind = "unused_class"
+	KindUnusedType       Kind = "unused_type"
 	KindUnusedVariable   Kind = "unused_variable"
 	KindUnusedConstant   Kind = "unused_constant"
 	KindUnusedImport     Kind = "unused_import"

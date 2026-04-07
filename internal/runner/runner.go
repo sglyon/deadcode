@@ -228,6 +228,7 @@ func scanPaths(roots []string) ([]string, map[string]int, error) {
 		".tox":         true,
 		"_build":       true,
 		".elixir_ls":   true,
+		"testdata":     true,
 	}
 
 	for _, root := range roots {
@@ -270,6 +271,8 @@ func languageFor(filename string) string {
 		return "javascript"
 	case ".ex", ".exs":
 		return "elixir"
+	case ".go":
+		return "go"
 	}
 	return ""
 }
@@ -324,20 +327,6 @@ func sortFindings(findings []finding.Finding) {
 		}
 		return findings[i].Symbol < findings[j].Symbol
 	})
-}
-
-// uniqueLanguages is a small helper used by callers building summaries.
-func UniqueLanguages(findings []finding.Finding) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, f := range findings {
-		if !seen[f.Language] {
-			seen[f.Language] = true
-			out = append(out, f.Language)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 // SplitCSV is a tiny helper used by the CLI flag parsing layer to split
