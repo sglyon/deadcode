@@ -1,81 +1,76 @@
-// Package cmd implements the deadcode CLI subcommands.
+// Package cmd implements the deadcode CLI using Cobra.
 //
-// v0.1 uses stdlib `flag` for hermetic builds. If subcommand sprawl warrants
-// it in v0.2, migrate to Cobra.
+// Each subcommand is built by a NewXxxCmd constructor and attached to
+// the root in NewRootCmd. No init() side effects — everything is wired
+// explicitly so the command tree is testable and obvious.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
 
 	"github.com/sglyon/deadcode/internal/adapter"
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // builtinAdapters returns every adapter compiled into this binary.
-// New adapters get added here. v0.1 ships only the Python/vulture adapter.
+// Adding a language means adding it here.
 func builtinAdapters() []adapter.Adapter {
 	return []adapter.Adapter{
 		python.New(),
 	}
 }
 
-// Main is the CLI entry point. main.go calls this.
-func Main(args []string) int {
-	if len(args) < 2 {
-		// Default: `deadcode` with no args == `deadcode scan .`
-		return runScan([]string{"."})
+// NewRootCmd builds the full command tree. Exported so tests can build
+// fresh trees and so main is a one-liner.
+func NewRootCmd() *cobra.Command {
+	root := &cobra.Command{
+		Use:   "deadcode [path]",
+		Short: "Multi-language dead-code detection orchestrator",
+		Long: `deadcode runs the right per-language analyzer for every file in a
+repo, normalizes the output to a unified Finding schema, and emits an
+agent-friendly report.
+
+With no subcommand, deadcode runs 'scan' on the given path (default ".").`,
+		Version:       Version,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		// Accept arbitrary positional args so `deadcode <path>` works.
+		// Cobra still dispatches to a known subcommand first; only
+		// non-subcommand args reach RunE.
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runScanFromRoot(cmd, args)
+		},
 	}
 
-	switch args[1] {
-	case "scan":
-		return runScan(args[2:])
-	case "doctor":
-		return runDoctor(args[2:])
-	case "adapters":
-		return runAdapters()
-	case "ignore":
-		return runIgnore(args[2:])
-	case "version", "--version", "-v":
-		fmt.Println("deadcode", Version)
-		return 0
-	case "help", "--help", "-h":
-		printRootHelp()
-		return 0
-	default:
-		// Bare path argument — treat as `deadcode scan <path>`
-		if !looksLikeFlag(args[1]) {
-			return runScan(args[1:])
-		}
-		fmt.Fprintf(os.Stderr, "deadcode: unknown command %q\n", args[1])
-		printRootHelp()
-		return 2
+	// Make `deadcode --version` print just the version (Cobra default
+	// includes the binary name, which is fine but slightly noisy).
+	root.SetVersionTemplate("deadcode {{.Version}}\n")
+
+	// Scan flags live on the root so `deadcode .` and
+	// `deadcode scan .` accept the same set.
+	addScanFlags(root)
+
+	// Subcommands.
+	root.AddCommand(NewScanCmd())
+	root.AddCommand(NewDoctorCmd())
+	root.AddCommand(NewAdaptersCmd())
+	root.AddCommand(NewIgnoreCmd())
+
+	return root
+}
+
+// Execute runs the root command and exits with the appropriate code.
+// main.go calls this.
+func Execute() {
+	root := NewRootCmd()
+	if err := root.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "deadcode:", err)
+		os.Exit(2)
 	}
-}
-
-func looksLikeFlag(s string) bool {
-	return len(s) > 0 && s[0] == '-'
-}
-
-func printRootHelp() {
-	fmt.Print(`deadcode - multi-language dead code detection
-
-USAGE:
-  deadcode [path]                    scan path (default: .)
-  deadcode scan [path] [flags]       explicit scan
-  deadcode doctor                    check tool availability
-  deadcode adapters                  list supported languages and tools
-  deadcode ignore <subcommand>       manage .deadcode-ignore.toml
-  deadcode version                   print version
-
-Run 'deadcode scan --help' or 'deadcode ignore help' for details.
-`)
-}
-
-// withCancelOnInterrupt is a helper used by long-running subcommands.
-func withCancelOnInterrupt(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithCancel(ctx)
 }

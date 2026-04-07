@@ -2,12 +2,8 @@
 // See docs/SPEC.md for the architecture.
 package main
 
-import (
-	"os"
-
-	"github.com/sglyon/deadcode/cmd"
-)
+import "github.com/sglyon/deadcode/cmd"
 
 func main() {
-	os.Exit(cmd.Main(os.Args))
+	cmd.Execute()
 }

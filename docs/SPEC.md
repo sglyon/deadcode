@@ -261,7 +261,7 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 ## Implementation choices
 
 - **Language: Go.** Single static binary. Excellent subprocess + JSON handling. Fast startup (matters for skill-driven invocation). Easy cross-compilation.
-- **CLI framework:** stdlib `flag` for v0.1–v0.2 (still hermetic enough). Migrate to Cobra in v0.3 if subcommand sprawl warrants it.
+- **CLI framework:** `github.com/spf13/cobra` (migrated in v0.2 once subcommand-of-subcommand `ignore list/validate` arrived). Free shell completion, consistent help text, easy to extend.
 - **TOML parser:** `github.com/BurntSushi/toml` (the standard Go TOML library).
 - **Glob matching:** `github.com/bmatcuk/doublestar/v4` for `**` support.
 - **Adapter delivery:** built-in, compiled into the binary. No runtime plugin loading in v1. External adapters via shell-script contract reserved for v0.4+.
@@ -293,7 +293,6 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 - Add TypeScript (`knip`) and Go (`staticcheck`) adapters
 - Confidence normalization documented per-adapter
 - Markdown reporter
-- Migrate to Cobra if subcommand sprawl warrants it
 
 ### v0.4 — Agent integration
 - `--since <ref>` diff mode
