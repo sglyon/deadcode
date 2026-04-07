@@ -1,4 +1,7 @@
-/deadcode
+# Built binary — ignore anywhere in the tree since a stuck shell cwd
+# during development once built it into testdata/go-sample/ by
+# accident. Anchoring to / isn't enough.
+deadcode
 
 # Elixir build artifacts (fixture projects compile into testdata/*/_build)
 _build/
