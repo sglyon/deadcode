@@ -90,6 +90,96 @@ func TestPrettyEmptyFindings(t *testing.T) {
 	}
 }
 
+// TestPrettyHighConfidenceMarkerOnlyWithContrast pins the v0.6
+// dogfood fix: the "← high confidence" marker only appears when the
+// report has BOTH high and lower-confidence findings. When every
+// finding is uniformly high-conf (e.g. a knip-only TS report where
+// every finding is 0.95), marking every row would be visual noise
+// rather than emphasis.
+func TestPrettyHighConfidenceMarkerOnlyWithContrast(t *testing.T) {
+	// Case 1: contrast exists (90% + 60% findings) → marker fires
+	contrastResult := sampleResult() // sampleResult has 90, 60, 60
+	var buf bytes.Buffer
+	if err := Pretty(&buf, contrastResult, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "high confidence") {
+		t.Errorf("expected marker on contrast report:\n%s", buf.String())
+	}
+
+	// Case 2: all findings are uniformly high-conf → marker
+	// suppressed (the 95% column carries the same info)
+	uniformResult := sampleResult()
+	for i := range uniformResult.Findings {
+		uniformResult.Findings[i].Confidence = 0.95
+	}
+	buf.Reset()
+	if err := Pretty(&buf, uniformResult, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "high confidence") {
+		t.Errorf("expected NO marker on uniformly-high report:\n%s", buf.String())
+	}
+
+	// Case 3: all findings are uniformly low-conf → marker also
+	// suppressed (no contrast either direction)
+	lowResult := sampleResult()
+	for i := range lowResult.Findings {
+		lowResult.Findings[i].Confidence = 0.60
+	}
+	buf.Reset()
+	if err := Pretty(&buf, lowResult, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "high confidence") {
+		t.Errorf("expected NO marker on uniformly-low report:\n%s", buf.String())
+	}
+}
+
+// TestShortenPathStripsScanRoots pins the dogfood fix: file paths
+// in pretty output should strip the longest matching prefix from
+// the scan roots, so a scan of `/Users/me/src/repo` shows
+// findings as `src/foo.py` instead of the full absolute path.
+func TestShortenPathStripsScanRoots(t *testing.T) {
+	cases := []struct {
+		path  string
+		roots []string
+		want  string
+	}{
+		{
+			path:  "/Users/me/src/repo/src/foo.py",
+			roots: []string{"/Users/me/src/repo"},
+			want:  "src/foo.py",
+		},
+		{
+			// Two scan roots, longest match wins
+			path:  "/Users/me/src/repo/sub/foo.py",
+			roots: []string{"/Users/me/src", "/Users/me/src/repo"},
+			want:  "sub/foo.py",
+		},
+		{
+			// Partial-name collision must NOT match (trailing
+			// separator handling): /a/build should not strip
+			// against /a/b
+			path:  "/a/build/foo.go",
+			roots: []string{"/a/b"},
+			want:  "/a/build/foo.go",
+		},
+		{
+			// No match → unchanged
+			path:  "/some/other/path.go",
+			roots: []string{"/elsewhere"},
+			want:  "/some/other/path.go",
+		},
+	}
+	for _, c := range cases {
+		got := shortenPath(c.path, c.roots)
+		if got != c.want {
+			t.Errorf("shortenPath(%q, %v) = %q, want %q", c.path, c.roots, got, c.want)
+		}
+	}
+}
+
 func TestPrettyShowIgnored(t *testing.T) {
 	r := sampleResult()
 	r.Ignored = []finding.IgnoredFinding{

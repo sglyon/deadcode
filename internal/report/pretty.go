@@ -20,7 +20,10 @@ import (
 //
 // Findings are grouped by file so the visual noise of repeated paths
 // disappears. The summary header is boxed; high-confidence findings
-// (>=0.85) get a marker so the eye lands on them first.
+// get a marker — but ONLY when the report has lower-confidence
+// findings to contrast against. When every finding is high-confidence,
+// the marker on every row would be pure noise (the column already
+// shows the percentage).
 func Pretty(w io.Writer, r *runner.Result, showIgnored, useColor bool) error {
 	r2 := lipgloss.NewRenderer(w)
 	if !useColor {
@@ -32,7 +35,7 @@ func Pretty(w io.Writer, r *runner.Result, showIgnored, useColor bool) error {
 		return err
 	}
 	if len(r.Findings) > 0 {
-		writeFindings(w, r.Findings, s)
+		writeFindings(w, r.Findings, s, r.ScanRoots, shouldHighlightContrast(r.Findings))
 	} else {
 		fmt.Fprintln(w, s.dim.Render("  no findings"))
 		fmt.Fprintln(w)
@@ -44,6 +47,27 @@ func Pretty(w io.Writer, r *runner.Result, showIgnored, useColor bool) error {
 		writeUnavailable(w, r.ToolsUnavailable, s)
 	}
 	return nil
+}
+
+// shouldHighlightContrast returns true when the report has BOTH
+// high-confidence (>=0.85) and lower-confidence findings. When
+// everything is uniformly high-conf, marking every row would be
+// noise rather than emphasis — the percentage column carries the
+// same information without competing for attention.
+func shouldHighlightContrast(findings []finding.Finding) bool {
+	hasHigh := false
+	hasLower := false
+	for _, f := range findings {
+		if f.Confidence >= 0.85 {
+			hasHigh = true
+		} else {
+			hasLower = true
+		}
+		if hasHigh && hasLower {
+			return true
+		}
+	}
+	return false
 }
 
 // prettyStyles bundles every styled element so call sites stay tidy
@@ -124,7 +148,7 @@ func writeHeader(w io.Writer, r *runner.Result, s prettyStyles) error {
 
 	body := title + "\n" + statsLine
 	if r.IgnoreFile != "" {
-		body += "\n" + s.ignoreLine.Render("ignore: "+shortenPath(r.IgnoreFile))
+		body += "\n" + s.ignoreLine.Render("ignore: "+shortenPath(r.IgnoreFile, r.ScanRoots))
 	}
 	fmt.Fprintln(w, s.headerBox.Render(body))
 	fmt.Fprintln(w)
@@ -139,12 +163,12 @@ func formatStat(s prettyStyles, value, label string) string {
 	return v + " " + s.statLabel.Render(label)
 }
 
-func writeFindings(w io.Writer, findings []finding.Finding, s prettyStyles) {
+func writeFindings(w io.Writer, findings []finding.Finding, s prettyStyles, scanRoots []string, highlightContrast bool) {
 	groups := groupByFile(findings)
 	maxLineWidth, maxKindWidth := columnWidths(findings)
 
 	for i, file := range groups.order {
-		fmt.Fprintln(w, "  "+s.fileHeader.Render(shortenPath(file)))
+		fmt.Fprintln(w, "  "+s.fileHeader.Render(shortenPath(file, scanRoots)))
 		for _, f := range groups.byFile[file] {
 			line := fmt.Sprintf("%*d", maxLineWidth, f.Line)
 			kind := fmt.Sprintf("%-*s", maxKindWidth, string(f.Kind))
@@ -156,7 +180,7 @@ func writeFindings(w io.Writer, findings []finding.Finding, s prettyStyles) {
 				agreement = "  " + s.agreementTag.Render("["+strings.Join(f.Tools, "+")+"]")
 			}
 			highlight := ""
-			if f.Confidence >= 0.85 {
+			if highlightContrast && f.Confidence >= 0.85 {
 				highlight = "  " + s.highlightMark.Render("← high confidence")
 			}
 			fmt.Fprintf(w, "    %s  %s  %s  %s%s%s\n",
@@ -248,17 +272,37 @@ func pickConfStyle(s prettyStyles, c float64) lipgloss.Style {
 	}
 }
 
-// shortenPath strips the cwd prefix when present so paths are readable
-// without losing the absolute reference. Falls back to the input on any
-// error.
-func shortenPath(p string) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return p
+// shortenPath returns a display-friendly version of an absolute file
+// path by stripping the longest matching prefix from the available
+// candidates: the scan roots first (so a scan of `~/src/repo` shows
+// findings as `src/foo.py` instead of `/Users/me/src/repo/src/foo.py`),
+// then the current working directory as a fallback (so dogfood
+// `deadcode .` still works).
+//
+// Falls back to the input unchanged if nothing matches.
+func shortenPath(p string, scanRoots []string) string {
+	candidates := make([]string, 0, len(scanRoots)+1)
+	candidates = append(candidates, scanRoots...)
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, cwd)
 	}
-	rel := strings.TrimPrefix(p, cwd)
-	if rel == p {
-		return p
+
+	best := p
+	bestLen := -1
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		// Normalize: ensure trailing separator so we don't strip a
+		// partial match (e.g., /a/b should not match /a/build).
+		root := c
+		if !strings.HasSuffix(root, string(os.PathSeparator)) {
+			root += string(os.PathSeparator)
+		}
+		if strings.HasPrefix(p, root) && len(root) > bestLen {
+			best = strings.TrimPrefix(p, root)
+			bestLen = len(root)
+		}
 	}
-	return strings.TrimPrefix(rel, "/")
+	return best
 }

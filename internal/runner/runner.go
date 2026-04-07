@@ -40,7 +40,12 @@ type Result struct {
 	ToolsRun         []string
 	ToolsUnavailable []string
 	IgnoreFile       string
-	DurationMs       int64
+	// ScanRoots are the absolute paths the user asked us to scan,
+	// after `~` expansion and absPath conversion. Reporters use
+	// these to render display-friendly relative paths instead of
+	// echoing back long absolute paths the user already typed.
+	ScanRoots  []string
+	DurationMs int64
 }
 
 // Run dispatches adapters and returns merged, filtered, sorted findings.
@@ -134,6 +139,7 @@ func Run(ctx context.Context, adapters []adapter.Adapter, opts Options) (*Result
 		ToolsRun:         toolsRun,
 		ToolsUnavailable: toolsUnavailable,
 		IgnoreFile:       ignoreFilePath,
+		ScanRoots:        absPaths(opts.Paths),
 		DurationMs:       time.Since(start).Milliseconds(),
 	}, nil
 }
@@ -232,6 +238,7 @@ func scanPaths(roots []string) ([]string, map[string]int, error) {
 		"vendor":       true,
 		".tox":         true,
 		"_build":       true,
+		"deps":         true, // Elixir/Erlang dependency tree, analogous to node_modules
 		".elixir_ls":   true,
 		"testdata":     true,
 	}
