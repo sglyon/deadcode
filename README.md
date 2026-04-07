@@ -3,8 +3,9 @@
 Multi-language dead-code detection orchestrator. Detects languages, runs the
 right per-language analyzer, and emits a unified, agent-friendly report.
 
-**Status:** v0.2 — vertical slice (Python via `vulture`) plus the unified
-`.deadcode-ignore.toml` filter that scales across every future adapter.
+**Status:** v0.3 — Python (`vulture`) and JavaScript/TypeScript (`knip`)
+adapters running side by side, unified `.deadcode-ignore.toml` filter
+working identically across both, Lipgloss `--pretty` mode, Cobra CLI.
 See [`docs/SPEC.md`](docs/SPEC.md) for the full architecture and roadmap.
 
 ## Why
@@ -91,13 +92,15 @@ All matchers on a rule AND together; rules are evaluated in order and
 the first match wins. `reason` is required. See
 [`docs/SPEC.md`](docs/SPEC.md#unified-ignore-v02) for full semantics.
 
-## Supported languages (v0.1)
+## Supported languages (v0.3)
 
-| Language | Tool      | Install                |
-|----------|-----------|------------------------|
-| Python   | `vulture` | `pip install vulture`  |
+| Language       | Tool      | Install                                              |
+|----------------|-----------|------------------------------------------------------|
+| Python         | `vulture` | `pip install vulture` (or `uv tool install vulture`) |
+| TypeScript/JS  | `knip`    | `npm install -g knip` (or auto-fallback to `npx -y knip`) |
 
-More adapters land in v0.2 — see [`docs/SPEC.md`](docs/SPEC.md).
+Run `deadcode doctor` to see which adapters are usable on your machine.
+More adapters land in v0.3.x — see [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Output schema
 

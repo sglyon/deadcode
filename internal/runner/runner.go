@@ -218,6 +218,9 @@ func scanPaths(roots []string) ([]string, map[string]int, error) {
 		"node_modules": true,
 		"dist":         true,
 		"build":        true,
+		".next":        true,
+		".nuxt":        true,
+		".turbo":       true,
 		".venv":        true,
 		"venv":         true,
 		"__pycache__":  true,
@@ -256,9 +259,13 @@ func scanPaths(roots []string) ([]string, map[string]int, error) {
 }
 
 func languageFor(filename string) string {
-	switch filepath.Ext(filename) {
+	switch strings.ToLower(filepath.Ext(filename)) {
 	case ".py":
 		return "python"
+	case ".ts", ".tsx", ".mts", ".cts":
+		return "typescript"
+	case ".js", ".jsx", ".mjs", ".cjs":
+		return "javascript"
 	}
 	return ""
 }

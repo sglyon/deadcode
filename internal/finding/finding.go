@@ -21,6 +21,7 @@ const (
 	KindUnusedExport     Kind = "unused_export"
 	KindUnusedParam      Kind = "unused_param"
 	KindUnusedField      Kind = "unused_field"
+	KindUnusedFile       Kind = "unused_file"
 	KindUnreachable      Kind = "unreachable"
 	KindUnusedDependency Kind = "unused_dependency"
 )

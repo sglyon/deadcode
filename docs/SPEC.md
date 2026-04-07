@@ -177,11 +177,11 @@ This is the only extension point. Adding a language is ~50 lines plus a parser.
 
 ## Per-language adapter plan
 
-| Language     | Tool                              | Why |
-|--------------|-----------------------------------|---|
-| Python       | `vulture` (+ `ruff F401/F841`)    | Native % confidence; widely installed |
-| TypeScript   | `knip`                            | Modern, project-aware, JSON output |
-| JavaScript   | `knip`                            | Same |
+| Language     | Tool                              | Status | Why |
+|--------------|-----------------------------------|--------|---|
+| Python       | `vulture` (+ `ruff F401/F841`)    | **shipped v0.1** | Native % confidence; widely installed |
+| TypeScript   | `knip`                            | **shipped v0.3** | Modern, project-aware, JSON output |
+| JavaScript   | `knip`                            | **shipped v0.3** | Same |
 | Go           | `staticcheck -checks=U1000`       | Standard, accurate, JSON output |
 | Rust         | `cargo +nightly udeps` (deps) + `cargo check` warnings | Best available |
 | Java         | `pmd` UnusedPrivateMethod ruleset | No IDE dependency |
@@ -292,8 +292,17 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
   `Cargo.toml`, `go.mod`) for portable file globs
 - Validated against bd-tracker: 137 → 16 findings (88% reduction)
 
-### v0.3 — Breadth
-- Add TypeScript (`knip`) and Go (`staticcheck`) adapters
+### v0.3 — Breadth (current)
+- Add JavaScript/TypeScript adapter via `knip`
+- Lipgloss `--pretty` reporter (shipped earlier in the v0.3 cycle)
+- Schema additions: `unused_file` kind for whole-file dead-code reports
+- Validated polyglot: Python + TypeScript scans interleave correctly,
+  unified ignore file works identically across both adapters
+- Knip adapter handles project-root discovery (nearest `package.json`)
+  and falls back to `npx --yes knip` when knip isn't installed globally
+
+### v0.3.x — Coverage
+- Add Go (`staticcheck`) adapter
 - Confidence normalization documented per-adapter
 - Markdown reporter
 

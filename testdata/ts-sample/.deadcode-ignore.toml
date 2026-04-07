@@ -1,0 +1,14 @@
+# Verify the unified ignore file works for knip findings — the same
+# .deadcode-ignore.toml syntax that handled bd-tracker's vulture noise.
+
+[[ignore]]
+file = "src/used.ts"
+symbol = "UnusedShape"
+kinds = ["unused_export"]
+reason = "Public type kept for downstream consumers (example of suppression)"
+
+[[ignore]]
+symbol = "*.Obsolete"
+kinds = ["unused_export"]
+languages = ["typescript"]
+reason = "Deprecated enum members kept for backward compatibility"

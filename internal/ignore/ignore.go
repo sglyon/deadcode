@@ -194,6 +194,7 @@ func knownKind(k string) bool {
 		finding.KindUnusedExport,
 		finding.KindUnusedParam,
 		finding.KindUnusedField,
+		finding.KindUnusedFile,
 		finding.KindUnreachable,
 		finding.KindUnusedDependency:
 		return true

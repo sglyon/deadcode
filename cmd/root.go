@@ -12,16 +12,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglyon/deadcode/internal/adapter"
+	"github.com/sglyon/deadcode/internal/adapters/javascript"
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 // builtinAdapters returns every adapter compiled into this binary.
 // Adding a language means adding it here.
 func builtinAdapters() []adapter.Adapter {
 	return []adapter.Adapter{
 		python.New(),
+		javascript.New(),
 	}
 }
 
