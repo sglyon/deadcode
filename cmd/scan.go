@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -18,6 +19,8 @@ import (
 // values land on the same struct via the package-level variables below.
 type scanFlags struct {
 	jsonOut             bool
+	prettyMode          string // auto | always | never
+	noColor             bool
 	outputPath          string
 	langStr             string
 	kindStr             string
@@ -40,7 +43,10 @@ var scanFlagValues scanFlags
 
 func addScanFlags(cmd *cobra.Command) {
 	f := cmd.Flags()
-	f.BoolVar(&scanFlagValues.jsonOut, "json", false, "Emit JSON instead of console output")
+	f.BoolVar(&scanFlagValues.jsonOut, "json", false, "Emit JSON instead of console output (overrides --pretty)")
+	f.StringVar(&scanFlagValues.prettyMode, "pretty", "auto",
+		"Pretty (Lipgloss) output mode: auto | always | never. Auto enables pretty when stdout is a terminal.")
+	f.BoolVar(&scanFlagValues.noColor, "no-color", false, "Disable color in pretty output (also respects $NO_COLOR)")
 	f.StringVarP(&scanFlagValues.outputPath, "output", "o", "", "Write report to this file (default stdout)")
 	f.StringVar(&scanFlagValues.langStr, "lang", "", "Restrict to languages (comma-separated, e.g. python,typescript)")
 	f.StringVar(&scanFlagValues.kindStr, "kind", "", "Restrict to finding kinds (comma-separated)")
@@ -139,20 +145,64 @@ func doScan(cmd *cobra.Command, args []string) error {
 		out = f
 	}
 
-	if scanFlagValues.jsonOut {
-		if err := report.JSON(out, result, scanFlagValues.showIgnored); err != nil {
-			return err
-		}
-	} else {
-		if err := report.Console(out, result, scanFlagValues.verbose, scanFlagValues.showIgnored); err != nil {
-			return err
-		}
+	if err := writeReport(out, result); err != nil {
+		return err
 	}
 
 	if scanFlagValues.threshold >= 0 && len(result.Findings) > scanFlagValues.threshold {
 		os.Exit(scanFlagValues.exitCode)
 	}
 	return nil
+}
+
+// writeReport routes the runner result to the appropriate reporter
+// based on --json / --pretty / --no-color flags and TTY detection.
+//
+// Precedence (highest to lowest):
+//  1. --json: JSON only.
+//  2. --pretty=always: pretty layout, color subject to suppressors.
+//  3. --pretty=auto + writer is a TTY: pretty layout with color.
+//  4. otherwise: plain Console reporter (the v0.1 default).
+func writeReport(out *os.File, result *runner.Result) error {
+	if scanFlagValues.jsonOut {
+		return report.JSON(out, result, scanFlagValues.showIgnored)
+	}
+
+	mode := strings.ToLower(scanFlagValues.prettyMode)
+	switch mode {
+	case "auto", "always", "never":
+		// ok
+	default:
+		return fmt.Errorf("--pretty must be one of: auto, always, never (got %q)", scanFlagValues.prettyMode)
+	}
+
+	pretty := false
+	switch mode {
+	case "always":
+		pretty = true
+	case "auto":
+		pretty = isTerminal(out)
+	}
+
+	if !pretty {
+		return report.Console(out, result, scanFlagValues.verbose, scanFlagValues.showIgnored)
+	}
+
+	useColor := !scanFlagValues.noColor && os.Getenv("NO_COLOR") == ""
+	return report.Pretty(out, result, scanFlagValues.showIgnored, useColor)
+}
+
+// isTerminal returns true if the writer is a character device (a TTY).
+// stdlib-only — works on macOS, Linux, and Windows.
+func isTerminal(w *os.File) bool {
+	if w == nil {
+		return false
+	}
+	fi, err := w.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 // loadIgnoreRules resolves the ignore file based on the user's flags.

@@ -234,6 +234,8 @@ deadcode explain <id>                  # (v0.4) Full evidence dump for one findi
 
 ```
 --json                  Emit JSON instead of console output
+--pretty <mode>         Pretty (Lipgloss) layout: auto|always|never. Auto enables it on TTYs.
+--no-color              Disable color in pretty output (respects $NO_COLOR)
 -o, --output <path>     Write report to file (default stdout)
 --lang <list>           Restrict to languages: python,typescript,go
 --kind <list>           Restrict to kinds: unused_function,unused_import
@@ -264,6 +266,7 @@ Then `Read /tmp/deadcode.json`, group by file, present top findings by confidenc
 - **CLI framework:** `github.com/spf13/cobra` (migrated in v0.2 once subcommand-of-subcommand `ignore list/validate` arrived). Free shell completion, consistent help text, easy to extend.
 - **TOML parser:** `github.com/BurntSushi/toml` (the standard Go TOML library).
 - **Glob matching:** `github.com/bmatcuk/doublestar/v4` for `**` support.
+- **Styled rendering:** `github.com/charmbracelet/lipgloss` for `--pretty` mode. Render-and-exit only — no Bubble Tea event loop. Bubble Tea is reserved for v0.4 (`deadcode ignore add` interactive flow) and v0.5+ (`deadcode tui` finding browser).
 - **Adapter delivery:** built-in, compiled into the binary. No runtime plugin loading in v1. External adapters via shell-script contract reserved for v0.4+.
 - **Concurrency:** one goroutine per adapter run; `errgroup` for coordination. Adapters are independent.
 - **Output ordering:** sort findings by `(file, line)` for deterministic diffs.

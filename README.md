@@ -33,6 +33,15 @@ deadcode
 # JSON to a file (agent-friendly)
 deadcode scan --json --output /tmp/deadcode.json .
 
+# Pretty (Lipgloss) output — auto-enabled when stdout is a terminal
+deadcode scan .
+
+# Force pretty even when piped
+deadcode scan --pretty=always . | less -R
+
+# Disable color (also respects $NO_COLOR)
+deadcode scan --no-color .
+
 # Restrict by language and confidence
 deadcode scan --lang python --min-confidence 0.8 src/
 
