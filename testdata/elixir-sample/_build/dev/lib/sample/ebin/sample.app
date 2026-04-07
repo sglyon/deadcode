@@ -1,1 +1,0 @@
-{application,sample,[{modules,['Elixir.Sample','Elixir.Sample.FakeController','Elixir.Sample.Orphan']},{optional_applications,[]},{applications,[kernel,stdlib,elixir]},{description,"sample"},{registered,[]},{vsn,"0.0.1"}]}.
