@@ -21,10 +21,50 @@ normalizes their output.
 For code duplication, use [`jscpd`](https://github.com/kucherenko/jscpd)
 instead. `deadcode` is dead-code only.
 
-## Build
+## Install
+
+Three options, in increasing convenience:
+
+### 1. Pre-built binary (recommended for teams)
+
+Download the archive for your OS/arch from the [latest release](https://github.com/sglyon/deadcode/releases/latest),
+extract it, and put `deadcode` on your `PATH`. Each archive contains
+the binary plus `README.md` and `docs/SPEC.md`.
 
 ```bash
-go build -o deadcode .
+# macOS arm64 example
+curl -sSL https://github.com/sglyon/deadcode/releases/latest/download/deadcode_VERSION_darwin_arm64.tar.gz | tar xz
+mv deadcode /usr/local/bin/
+```
+
+### 2. `go install` (for Go developers)
+
+```bash
+go install github.com/sglyon/deadcode@latest
+```
+
+This puts `deadcode` in `$GOPATH/bin` (typically `$HOME/go/bin`).
+
+### 3. Build from source
+
+```bash
+git clone https://github.com/sglyon/deadcode
+cd deadcode
+make build       # produces ./deadcode
+make install     # or installs to $GOPATH/bin
+```
+
+After installing, run `deadcode doctor` to see which adapters are
+usable on your machine. Each adapter wraps an external tool you may
+need to install separately — see the table below.
+
+## Build (contributors)
+
+```bash
+make build       # local binary
+make test        # run tests
+make snapshot    # build all release artifacts in dist/ (no publish)
+make dogfood     # build + scan deadcode against itself
 ```
 
 ## Usage

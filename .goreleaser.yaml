@@ -1,0 +1,115 @@
+# goreleaser config — see https://goreleaser.com/customization/
+#
+# Local snapshot build (no publish, no tag required):
+#   goreleaser release --snapshot --clean
+#
+# Real release (requires a git tag like v0.7.0 and GITHUB_TOKEN):
+#   git tag v0.7.0 && git push origin v0.7.0
+#   goreleaser release --clean
+#
+# Snapshot artifacts land in dist/ which is gitignored.
+version: 2
+
+project_name: deadcode
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: deadcode
+    main: ./
+    binary: deadcode
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # Windows on ARM is rare and ships of varying quality; skip.
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/sglyon/deadcode/cmd.Version={{.Version}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: deadcode
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - docs/SPEC.md
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w]*:+.*$"
+      order: 0
+    - title: Bug fixes
+      regexp: "^.*fix[(\\w]*:+.*$"
+      order: 1
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: sglyon
+    name: deadcode
+  prerelease: auto
+  draft: false
+  header: |
+    ## deadcode {{ .Tag }}
+
+    Multi-language dead-code detection orchestrator. See
+    [`docs/SPEC.md`](https://github.com/sglyon/deadcode/blob/{{ .Tag }}/docs/SPEC.md)
+    for the full architecture.
+
+    ### Install
+
+    Pick the archive for your OS/arch below, extract, and put `deadcode`
+    on your PATH. Or use `go install`:
+
+    ```sh
+    go install github.com/sglyon/deadcode@{{ .Tag }}
+    ```
+
+    Run `deadcode doctor` to see which adapters are usable on your
+    machine. Each adapter wraps an external tool you may need to
+    install separately (`vulture`, `knip`, `staticcheck`,
+    `golang.org/x/tools/cmd/deadcode`, or Elixir/`mix`).
+  footer: |
+    **Full changelog**: https://github.com/sglyon/deadcode/compare/{{ .PreviousTag }}...{{ .Tag }}

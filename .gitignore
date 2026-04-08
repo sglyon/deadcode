@@ -6,3 +6,6 @@ deadcode
 # Elixir build artifacts (fixture projects compile into testdata/*/_build)
 _build/
 
+# Goreleaser snapshot output
+dist/
+

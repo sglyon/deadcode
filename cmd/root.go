@@ -18,7 +18,12 @@ import (
 	"github.com/sglyon/deadcode/internal/adapters/python"
 )
 
-const Version = "0.7.0"
+// Version is the deadcode CLI version. Declared as a `var` (not a
+// const) so the release pipeline can inject the actual git tag at
+// build time via `go build -ldflags="-X .../cmd.Version=v0.7.0"`.
+// The default value here is the in-development next release —
+// goreleaser overrides it on real builds.
+var Version = "0.7.0"
 
 // builtinAdapters returns every adapter compiled into this binary.
 // Adding a language means adding it here.
