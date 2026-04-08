@@ -36,6 +36,9 @@ deadcode
 # JSON to a file (agent-friendly)
 deadcode scan --json --output /tmp/deadcode.json .
 
+# Markdown report (PR descriptions, Slack, GitHub issues)
+deadcode scan --markdown --output report.md .
+
 # Pretty (Lipgloss) output — auto-enabled when stdout is a terminal
 deadcode scan .
 

@@ -19,6 +19,7 @@ import (
 // values land on the same struct via the package-level variables below.
 type scanFlags struct {
 	jsonOut             bool
+	markdownOut         bool
 	prettyMode          string // auto | always | never
 	noColor             bool
 	outputPath          string
@@ -43,7 +44,8 @@ var scanFlagValues scanFlags
 
 func addScanFlags(cmd *cobra.Command) {
 	f := cmd.Flags()
-	f.BoolVar(&scanFlagValues.jsonOut, "json", false, "Emit JSON instead of console output (overrides --pretty)")
+	f.BoolVar(&scanFlagValues.jsonOut, "json", false, "Emit JSON instead of console output (overrides --markdown and --pretty)")
+	f.BoolVar(&scanFlagValues.markdownOut, "markdown", false, "Emit Markdown report (overrides --pretty). Suitable for PR descriptions and Slack.")
 	f.StringVar(&scanFlagValues.prettyMode, "pretty", "auto",
 		"Pretty (Lipgloss) output mode: auto | always | never. Auto enables pretty when stdout is a terminal.")
 	f.BoolVar(&scanFlagValues.noColor, "no-color", false, "Disable color in pretty output (also respects $NO_COLOR)")
@@ -156,16 +158,21 @@ func doScan(cmd *cobra.Command, args []string) error {
 }
 
 // writeReport routes the runner result to the appropriate reporter
-// based on --json / --pretty / --no-color flags and TTY detection.
+// based on --json / --markdown / --pretty / --no-color flags and TTY
+// detection.
 //
 // Precedence (highest to lowest):
 //  1. --json: JSON only.
-//  2. --pretty=always: pretty layout, color subject to suppressors.
-//  3. --pretty=auto + writer is a TTY: pretty layout with color.
-//  4. otherwise: plain Console reporter (the v0.1 default).
+//  2. --markdown: CommonMark report (PR descriptions, Slack).
+//  3. --pretty=always: pretty layout, color subject to suppressors.
+//  4. --pretty=auto + writer is a TTY: pretty layout with color.
+//  5. otherwise: plain Console reporter (the v0.1 default).
 func writeReport(out *os.File, result *runner.Result) error {
 	if scanFlagValues.jsonOut {
 		return report.JSON(out, result, scanFlagValues.showIgnored)
+	}
+	if scanFlagValues.markdownOut {
+		return report.Markdown(out, result, scanFlagValues.showIgnored)
 	}
 
 	mode := strings.ToLower(scanFlagValues.prettyMode)
