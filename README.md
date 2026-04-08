@@ -3,11 +3,12 @@
 Multi-language dead-code detection orchestrator. Detects languages, runs the
 right per-language analyzer, and emits a unified, agent-friendly report.
 
-**Status:** v0.5 — Python (`vulture`), JavaScript/TypeScript (`knip`),
+**Status:** v0.7 — Python (`vulture`), JavaScript/TypeScript (`knip`),
 Elixir (`mix compile` + set-theoretic type system), and Go
-(`staticcheck`) adapters running side by side, unified
-`.deadcode-ignore.toml` filter working identically across all of
-them, Lipgloss `--pretty` mode, Cobra CLI.
+(`staticcheck` + `golang.org/x/tools/cmd/deadcode`) adapters running
+side by side. Unified `.deadcode-ignore.toml` filter, cross-tool
+deduplication, Lipgloss `--pretty` and Markdown reporters, Cobra CLI,
+cross-platform release binaries via goreleaser.
 See [`docs/SPEC.md`](docs/SPEC.md) for the full architecture and roadmap.
 
 ## Why
