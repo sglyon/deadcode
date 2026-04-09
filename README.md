@@ -26,16 +26,21 @@ instead. `deadcode` is dead-code only.
 
 Three options, in increasing convenience:
 
-### 1. Pre-built binary (recommended for teams)
-
-Download the archive for your OS/arch from the [latest release](https://github.com/sglyon/deadcode/releases/latest),
-extract it, and put `deadcode` on your `PATH`. Each archive contains
-the binary plus `README.md` and `docs/SPEC.md`.
+### 1. One-liner install (recommended)
 
 ```bash
-# macOS arm64 example
-curl -sSL https://github.com/sglyon/deadcode/releases/latest/download/deadcode_VERSION_darwin_arm64.tar.gz | tar xz
-mv deadcode /usr/local/bin/
+curl -sSL https://raw.githubusercontent.com/sglyon/deadcode/main/install.sh | sh
+```
+
+Detects OS/arch, downloads the latest release binary, and installs to
+`/usr/local/bin`. Override with env vars:
+
+```bash
+# Specific version
+curl -sSL https://raw.githubusercontent.com/sglyon/deadcode/main/install.sh | VERSION=v0.7.0 sh
+
+# Custom install directory (no sudo needed)
+curl -sSL https://raw.githubusercontent.com/sglyon/deadcode/main/install.sh | INSTALL_DIR=$HOME/.local/bin sh
 ```
 
 ### 2. `go install` (for Go developers)
